@@ -11,6 +11,8 @@
 #define OUT_OF_SEGMENT_DATA	4
 #define BORDER_DATA			1
 
+#define EDGE_DATA			255
+
 class Textonizer
 {
 public:
@@ -33,22 +35,17 @@ protected:
 
     void colorCluster(int nCluster);
 	void cannyEdgeDetect(int nCluster);
-	void FindClusterBoundaries(int nCluster);
 
 	void extractTextons(int nCluster);
-	void assignTextons(int x, int y, uchar * pData, int * pTextonBool, int nClust);
+	int scanForTextons(int nCluster, int * pTextonMap);
+	void colorTextons(int nTexton, int nCluster, int * pTextonMap);
 
-	void repairData(uchar *pBorderData,int nCluster);
-	int fixDataIterI(uchar *pBorderData, int nCluster);
-	int fixDataIterII(uchar *pBorderData, int nCluster);
-	int fixDataIterIII(uchar *pBorderData,int nCluster);
+	void assignTextons(int x, int y, uchar * pData, int * pTextonMap, int nClust);
 
-	void CalcHistogram();
-	void CalcClusters(CvMat * pData);
+	void colorTextonMap(uchar *pBorderData,int * pTextonMap,int nCluster);
 	
-	
-	void colorTextonMap(uchar *pBorderData,int * pTextonBool,int nCluster);
-	
+
+
 	inline bool isInCluster(int i, int j, int nCluster) {
 		return (m_pClusters->data.i[j*m_pImg->width+i] == nCluster);
 	}
