@@ -20,7 +20,7 @@ int main(int argc, char ** argv)
   }
   
   int nMinTextonSize = 50;
-  int clusters = 3;
+  int clusters = 2;
   if (argc > 2)
     clusters = atoi(argv[2]);
   if (argc > 3)
