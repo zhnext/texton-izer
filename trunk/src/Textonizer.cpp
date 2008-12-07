@@ -20,7 +20,6 @@ Textonizer::Textonizer(IplImage * Img, int nClusters, int nMinTextonSize) :m_pIm
 Textonizer::~Textonizer()
 {
 	cvReleaseMat(&m_pClusters);
-	cvReleaseMat(&m_pTextons);
 	cvReleaseImage(&m_pOutImg);
 	cvReleaseImage(&m_pSegmentBoundaries);
 }
@@ -66,17 +65,15 @@ void Textonizer::Cluster(CFeatureExtraction *pFeatureExtractor)
   cvReleaseMat(&pChannels);
 }
 
-void Textonizer::SaveImage(char *filename)
+void Textonizer::SaveImage(char *filename, IplImage* img)
 {
 	printf("Saving image to: %s\n", filename);
-	if (!cvSaveImage(filename,m_pOutImg))
+	if (!cvSaveImage(filename,img))
 		printf("Could not save: %s\n",filename);
 }
 
-void Textonizer::RecolorPixel(uchar * pData, int y, int x, CvScalar * pColor)
+void Textonizer::RecolorPixel(uchar * pData, int y, int x, int step, CvScalar * pColor)
 {
-	int step = m_pImg->widthStep;
-
 	// Only take UV components
 	pData[y*step+x*3+0] = (uchar)pColor->val[0];
 	pData[y*step+x*3+1] = (uchar)pColor->val[1];
@@ -92,7 +89,7 @@ void Textonizer::colorCluster(int nCluster)
   for (int i=0; i<m_pImg->height; i++){
       for (int j=0; j<m_pImg->width; j++) {
           if (m_pClusters->data.i[i*m_pImg->width+j] != nCluster) {
-            RecolorPixel(pData, i,j, &color);
+            RecolorPixel(pData, i,j, m_pImg->widthStep, &color);
           }
 	  }
   }
@@ -216,44 +213,64 @@ void Textonizer::colorTextons(int nTexton, int nCluster, int * pTextonMap)
 		int maxX = 0;
 		int maxY = 0;
 
-		//"Extract textons"
 		for (int i=0; i < m_pOutImg->width; i++){
 			for (int j=0; j < m_pOutImg->height; j++) {
 				if (pTextonMap[j * m_pOutImg->width + i] == clus)
 				{
-					if (minX > i)
-						minX = i;
-					if (minY > j)
-						minY = j;
-					if (maxX < i)
-						maxX = i;
-					if (maxY < j)
-						maxY = j;
+					if (minX > i) minX = i;
+					if (minY > j) minY = j;
+					if (maxX < i) maxX = i;
+					if (maxY < j) maxY = j;
 				}
 				else {
-					RecolorPixel(pData, j, i, &color);
+					RecolorPixel(pData, j, i, m_pOutImg->widthStep, &color);
 				}
 			}
 		}
 
-		char filename[255];
+		int step = m_pOutImg->widthStep;
 
+		IplImage* im = cvCreateImage(cvSize(maxX - minX,maxY - minY), m_pImg->depth,m_pImg->nChannels); 
+		cvSetZero(im);
+		uchar * pImData  = (uchar *)im->imageData;
+
+		for (int i=minX; i<maxX; i++)
+		{
+			for (int j=minY; j<maxY; j++) 
+			{
+				color.val[0] = pData[j*step+i*3+0];
+				color.val[1] = pData[j*step+i*3+1];
+				color.val[2] = pData[j*step+i*3+2];
+				RecolorPixel(pImData, j - minY, i - minX, im->widthStep, &color);
+			}
+		}
+
+		char filename[255];
+		sprintf(filename, "Cluster_%d_Texton_%d.jpg", nCluster, nNum);
+		cvNamedWindow( filename );
+		cvShowImage( filename, im );
+		SaveImage(filename, im);
+		cvWaitKey(0);
+		cvDestroyWindow(filename);
+
+/*
 		sprintf(filename, "Cluster_%d_Texton_%d.jpg", nCluster, nNum);
 		cvNamedWindow( filename, 1 );
 		printf("Displaying texton #%d\n", nNum);
 		cvShowImage( filename, m_pOutImg );
-		SaveImage(filename);
+		SaveImage(filename, m_pOutImg);
 		cvWaitKey(0);
 		cvDestroyWindow(filename);
-
+*/
 		printf("\n");
-		/*
-		ColorWindow(minX, minY, maxX - minX, maxY - minY);
 
+		
+		ColorWindow(minX, minY, maxX - minX, maxY - minY);
+/*
 		sprintf(filename, "Cluster_%d_Texton_%d.jpg", nCluster, nNum);
 		cvNamedWindow( filename, 1 );
 		cvShowImage( filename, m_pOutImg );
-		SaveImage(filename);
+		SaveImage(filename, m_pOutImg);
 		cvWaitKey(0);
 		cvDestroyWindow(filename);
 		*/
@@ -291,23 +308,24 @@ void Textonizer::ColorWindow(int x, int y, int sizeX, int sizeY)
   color.val[1] = 0;
   color.val[2] = 0;
 
+
   for (int i=x; i<x+sizeX; i++)
   {
-	  RecolorPixel(pData, y,i, &color);
-	  RecolorPixel(pData, y+1,i, &color);
+	  RecolorPixel(pData, y,i, step, &color);
+	  RecolorPixel(pData, y+1,i, step, &color);
 
-	  RecolorPixel(pData, y+sizeY,i, &color);
+	  RecolorPixel(pData, y+sizeY,i, step, &color);
 	  if (y+sizeY+1 < m_pImg->height)
-		RecolorPixel(pData, y+sizeY+1,i, &color);
+		RecolorPixel(pData, y+sizeY+1,i, step, &color);
   }
 
   for (int j=y; j<y+sizeY; j++) 
   {
-	  RecolorPixel(pData, j,x, &color);
-	  RecolorPixel(pData, j,x+1, &color);
+	  RecolorPixel(pData, j,x, step, &color);
+	  RecolorPixel(pData, j,x+1, step, &color);
 
-	  RecolorPixel(pData, j,x+sizeX, &color);
+	  RecolorPixel(pData, j,x+sizeX, step, &color);
 	  if (x+sizeX+1 < m_pImg->height)
-		  RecolorPixel(pData, j,x+sizeX + 1, &color);
+		  RecolorPixel(pData, j,x+sizeX + 1, step, &color);
   }
 }

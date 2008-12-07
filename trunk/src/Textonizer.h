@@ -27,8 +27,8 @@ protected:
 	
 	
 	void ColorWindow(int x, int y, int sizeX, int sizeY);
-	void SaveImage(char *filename);
-	void RecolorPixel(uchar * pData, int y, int x, CvScalar * pColor);
+	void SaveImage(char *filename,IplImage* img);
+	void RecolorPixel(uchar * pData, int y, int x, int step, CvScalar * pColor);
 
 	void Segment();
 	void Cluster(CFeatureExtraction *pFeatureExtractor);
@@ -59,8 +59,6 @@ protected:
 	int m_nCurTextonSize;
 
 	CvMat * m_pClusters;
-	CvMat * m_pHist;
-	CvMat * m_pTextons;
 
 	int m_nClusters;
 	int m_nMinTextonSize;
