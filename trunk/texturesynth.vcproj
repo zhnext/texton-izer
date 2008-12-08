@@ -207,14 +207,14 @@
 				</File>
 			</Filter>
 			<Filter
-				Name="Textonizer"
+				Name="Textonator"
 				>
 				<File
-					RelativePath=".\src\Textonizer.cpp"
+					RelativePath=".\src\Textonator.cpp"
 					>
 				</File>
 				<File
-					RelativePath=".\src\Textonizer.h"
+					RelativePath=".\src\Textonator.h"
 					>
 				</File>
 			</Filter>

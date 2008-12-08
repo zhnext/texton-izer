@@ -1,30 +1,30 @@
-#include "Textonizer.h"
+#include "Textonator.h"
 #include <time.h>
 //using namespace std;
 
 //#define DEBUG_PRINT
 
-Textonizer::Textonizer(IplImage * Img, int nClusters, int nMinTextonSize) :m_pImg(Img)
+Textonator::Textonator(IplImage * Img, int nClusters, int nMinTextonSize) :m_pImg(Img)
 {
 	m_pOutImg = cvCreateImage(cvSize(m_pImg->width,m_pImg->height),m_pImg->depth,m_pImg->nChannels);
 	m_pClusters = cvCreateMat( (m_pImg->height * m_pImg->width), 1, CV_32SC1 );
 	
 	m_pSegmentBoundaries = cvCreateImage(cvGetSize(m_pOutImg), IPL_DEPTH_8U, 1); 
   
-	printf("Minimal Texton Size=%d, Clusters=%d\n", nMinTextonSize, nClusters);
-
 	m_nMinTextonSize = nMinTextonSize;
 	m_nClusters = nClusters; 
+
+	printf("Minimal Texton Size=%d, Clusters Number=%d\n", m_nMinTextonSize, m_nClusters);
 }
 
-Textonizer::~Textonizer()
+Textonator::~Textonator()
 {
 	cvReleaseMat(&m_pClusters);
 	cvReleaseImage(&m_pOutImg);
 	cvReleaseImage(&m_pSegmentBoundaries);
 }
 
-void Textonizer::Textonize()
+void Textonator::Textonize()
 {
 	//we'll start by segmenting and clustering the image
 	Segment();
@@ -33,6 +33,17 @@ void Textonizer::Textonize()
 	for (int i = 0;i < m_nClusters; i++) {
 		//color the appropriate cluster
 		colorCluster(i);
+		
+
+		IplImage* pPyrImg = cvCreateImage(cvSize(m_pImg->width*2,m_pImg->height*2),m_pImg->depth,m_pImg->nChannels);
+		//FIXME
+		//cvSmooth( m_pOutImg, m_pOutImg, CV_BLUR);
+		//gaussian blur (5x5) the image, to smooth out noise
+		cvPyrUp(m_pOutImg, pPyrImg);
+		cvPyrDown(pPyrImg, m_pOutImg);
+
+		cvReleaseImage(&pPyrImg);
+
 		//retrieve the canny edges of the cluster
 		cannyEdgeDetect(i);
 		//Extract the textons from the cluster according to the collected boundaries
@@ -40,7 +51,7 @@ void Textonizer::Textonize()
 	}
 }
 
-void Textonizer::Segment()
+void Textonator::Segment()
 {
   printf("Segmenting the image...\n");
 
@@ -52,7 +63,7 @@ void Textonizer::Segment()
   delete pFeatureExtractor;
 }
 
-void Textonizer::Cluster(CFeatureExtraction *pFeatureExtractor) 
+void Textonator::Cluster(CFeatureExtraction *pFeatureExtractor) 
 {
   CvMat * pChannels = cvCreateMat(pFeatureExtractor->GetPrincipalChannels()->rows,pFeatureExtractor->GetPrincipalChannels()->cols,pFeatureExtractor->GetPrincipalChannels()->type);
 
@@ -65,14 +76,14 @@ void Textonizer::Cluster(CFeatureExtraction *pFeatureExtractor)
   cvReleaseMat(&pChannels);
 }
 
-void Textonizer::SaveImage(char *filename, IplImage* img)
+void Textonator::SaveImage(char *filename, IplImage* img)
 {
 	printf("Saving image to: %s\n", filename);
 	if (!cvSaveImage(filename,img))
 		printf("Could not save: %s\n",filename);
 }
 
-void Textonizer::RecolorPixel(uchar * pData, int y, int x, int step, CvScalar * pColor)
+void Textonator::RecolorPixel(uchar * pData, int y, int x, int step, CvScalar * pColor)
 {
 	// Only take UV components
 	pData[y*step+x*3+0] = (uchar)pColor->val[0];
@@ -80,7 +91,7 @@ void Textonizer::RecolorPixel(uchar * pData, int y, int x, int step, CvScalar * 
 	pData[y*step+x*3+2] = (uchar)pColor->val[2];
 }
  
-void Textonizer::colorCluster(int nCluster)
+void Textonator::colorCluster(int nCluster)
 {
   uchar * pData  = (uchar *)m_pOutImg->imageData;
   cvCvtColor(m_pImg, m_pOutImg, CV_BGR2YCrCb);
@@ -97,7 +108,7 @@ void Textonizer::colorCluster(int nCluster)
   cvCvtColor(m_pOutImg, m_pOutImg, CV_YCrCb2BGR);
 }
 
-void Textonizer::cannyEdgeDetect(int nCluster)
+void Textonator::cannyEdgeDetect(int nCluster)
 {
 	printf("Performing Canny edge detection...\n");
 
@@ -110,7 +121,7 @@ void Textonizer::cannyEdgeDetect(int nCluster)
     cvReleaseImage(&bn);
 }
 
-void Textonizer::assignTextons(int x, int y, uchar * pData, int * pTextonMap, int nTexton)
+void Textonator::assignTextons(int x, int y, uchar * pData, int * pTextonMap, int nTexton)
 {
 	//if we are in no man's land or if we are already coloured
 	if (pTextonMap[y*m_pImg->width+x] == OUT_OF_SEGMENT_DATA
@@ -138,7 +149,7 @@ void Textonizer::assignTextons(int x, int y, uchar * pData, int * pTextonMap, in
 		assignTextons(x,y-1,pData,pTextonMap,nTexton);
 }
 
-void Textonizer::colorTextonMap(uchar *pBorderData,int * pTextonMap,int nCluster)
+void Textonator::colorTextonMap(uchar *pBorderData,int * pTextonMap,int nCluster)
 {
 	int borderStep = m_pSegmentBoundaries->widthStep;
 	for (int i=0; i < m_pOutImg->width; i++){
@@ -156,7 +167,7 @@ void Textonizer::colorTextonMap(uchar *pBorderData,int * pTextonMap,int nCluster
   }
 }
 
-int Textonizer::scanForTextons(int nCluster, int * pTextonMap)
+int Textonator::scanForTextons(int nCluster, int * pTextonMap)
 {
 	uchar * pData  = (uchar *) m_pOutImg->imageData;
 	uchar * pBorderData  = (uchar *) m_pSegmentBoundaries->imageData;
@@ -198,13 +209,13 @@ int Textonizer::scanForTextons(int nCluster, int * pTextonMap)
 	return nTexton;
 }
 
-void Textonizer::colorTextons(int nTexton, int nCluster, int * pTextonMap)
+void Textonator::colorTextons(int nTexton, int nCluster, int * pTextonMap)
 {
 	uchar * pData  = (uchar *) m_pOutImg->imageData;
 
 	int clus = FIRST_TEXTON_NUM;
 	for (int nNum = 0; clus < nTexton; clus++, nNum++){
-		CvScalar color = cvScalarAll(0);
+		CvScalar color = cvScalar(200, 0, 0);
 
 		memcpy(pData, (uchar *)m_pImg->imageData, m_pImg->imageSize);
 
@@ -230,8 +241,7 @@ void Textonizer::colorTextons(int nTexton, int nCluster, int * pTextonMap)
 
 		int step = m_pOutImg->widthStep;
 
-		IplImage* im = cvCreateImage(cvSize(maxX - minX,maxY - minY), m_pImg->depth,m_pImg->nChannels); 
-		cvSetZero(im);
+		IplImage* im = cvCreateImage(cvSize(maxX - minX,maxY - minY), m_pImg->depth,m_pImg->nChannels);
 		uchar * pImData  = (uchar *)im->imageData;
 
 		for (int i=minX; i<maxX; i++)
@@ -261,23 +271,23 @@ void Textonizer::colorTextons(int nTexton, int nCluster, int * pTextonMap)
 		SaveImage(filename, m_pOutImg);
 		cvWaitKey(0);
 		cvDestroyWindow(filename);
-*/
-		printf("\n");
+
+/*		printf("\n");
 
 		
 		ColorWindow(minX, minY, maxX - minX, maxY - minY);
-/*
+
 		sprintf(filename, "Cluster_%d_Texton_%d.jpg", nCluster, nNum);
 		cvNamedWindow( filename, 1 );
 		cvShowImage( filename, m_pOutImg );
 		SaveImage(filename, m_pOutImg);
 		cvWaitKey(0);
 		cvDestroyWindow(filename);
-		*/
+*/
 	}
 }
 
-void Textonizer::extractTextons(int nCluster)
+void Textonator::extractTextons(int nCluster)
 {
 	printf("Extracting textons from cluster #%d:\n\n", nCluster);
 
@@ -292,7 +302,7 @@ void Textonizer::extractTextons(int nCluster)
 	delete [] pTextonMap;
 }
 
-void Textonizer::ColorWindow(int x, int y, int sizeX, int sizeY)
+void Textonator::ColorWindow(int x, int y, int sizeX, int sizeY)
 {
   //printf("ColorWindow(int x=%d, int y=%d, x size=%d,y size=%d)\n", x,y,sizeX, sizeY);
 
