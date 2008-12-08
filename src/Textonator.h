@@ -13,11 +13,11 @@
 
 #define EDGE_DATA			255
 
-class Textonizer
+class Textonator
 {
 public:
-  Textonizer(IplImage * Img, int nClusters, int nMinTextonSize);
-	virtual ~Textonizer();
+  Textonator(IplImage * Img, int nClusters, int nMinTextonSize);
+	virtual ~Textonator();
 
 public:
 
