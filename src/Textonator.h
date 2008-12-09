@@ -16,15 +16,12 @@
 class Textonator
 {
 public:
-  Textonator(IplImage * Img, int nClusters, int nMinTextonSize);
+	Textonator(IplImage * Img, int nClusters, int nMinTextonSize);
 	virtual ~Textonator();
-
-public:
 
 	void Textonize();
 
-protected:
-	
+private:
 	
 	void ColorWindow(int x, int y, int sizeX, int sizeY);
 	void SaveImage(char *filename,IplImage* img);
@@ -34,34 +31,30 @@ protected:
 	void Cluster(CFeatureExtraction *pFeatureExtractor);
 
     void colorCluster(int nCluster);
-	void cannyEdgeDetect(int nCluster);
+	void blurImage();
+	void cannyEdgeDetect();
+
+	void extractTexton(int minX, int maxX, int minY, int maxY, uchar * pImageData, IplImage* pTexton);
 
 	void extractTextons(int nCluster);
 	int scanForTextons(int nCluster, int * pTextonMap);
 	void colorTextons(int nTexton, int nCluster, int * pTextonMap);
-
+	void colorTextonMap(uchar *pBorderData,int * pTextonMap,int nCluster);
 	void assignTextons(int x, int y, uchar * pData, int * pTextonMap, int nClust);
 
-	void colorTextonMap(uchar *pBorderData,int * pTextonMap,int nCluster);
-	
+private:
 
-
-	inline bool isInCluster(int i, int j, int nCluster) {
-		return (m_pClusters->data.i[j*m_pImg->width+i] == nCluster);
-	}
-
-protected:
-
-	IplImage *	m_pImg;
-	IplImage *	m_pOutImg;
+	IplImage*	m_pImg;
+	IplImage*	m_pOutImg;
 	IplImage*	m_pSegmentBoundaries;
 
-	int m_nCurTextonSize;
+	CvMat *		m_pClusters;
 
-	CvMat * m_pClusters;
+	int			m_nClusters;
+	int			m_nMinTextonSize;
+	int			m_nCurTextonSize;
 
-	int m_nClusters;
-	int m_nMinTextonSize;
+	CvScalar	m_bgColor;
 	
 };
 
