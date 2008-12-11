@@ -42,6 +42,9 @@ private:
 	void colorTextonMap(uchar *pBorderData,int * pTextonMap,int nCluster);
 	void assignTextons(int x, int y, uchar * pData, int * pTextonMap, int nClust);
 
+	void fixTexton(int nCurDataType, int nValidData1, int nValidData2, int * pTextonMap);
+	void assignRemUntextoned(int * pTextonMap);
+
 private:
 
 	IplImage*	m_pImg;
