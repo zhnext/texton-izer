@@ -219,6 +219,14 @@
 				</File>
 			</Filter>
 		</Filter>
+		<File
+			RelativePath=".\src\Texton.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\src\Texton.h"
+			>
+		</File>
 	</Files>
 	<Globals>
 	</Globals>
