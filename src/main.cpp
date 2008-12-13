@@ -4,9 +4,12 @@
 int main(int argc, char ** argv)
 {
 	IplImage * pInputImage;
+	vector<Texton*> textonList;
+	int nNum = 0;
+	int nCurCluster = 0;
 
 	if (argc < 2 || argc > 4) {
-	  std::cout << "Usage: texturesynth picture_file_path [cluster_number] [minimal texton size]" << std::endl;
+	  std::cout << "Usage: texturesynth image_file_path [cluster_number]" << std::endl;
 	  return (-1);
 	}
 
@@ -16,15 +19,36 @@ int main(int argc, char ** argv)
 	  return (-1);
 	}
 
-	int nMinTextonSize = 50;
+	int nMinTextonSize = 20;
 	int clusters = 2;
 	if (argc > 2)
 	clusters = atoi(argv[2]);
 	if (argc > 3)
 	nMinTextonSize = atoi(argv[3]);
 
+	char filename[255];
+	sprintf(filename, "Original Image");
+	cvNamedWindow( filename, 1 );
+	cvShowImage( filename, pInputImage );
+	cvWaitKey(0);
+	cvDestroyWindow(filename);
+
 	Textonator * seg = new Textonator(pInputImage, clusters, nMinTextonSize);
-	seg->Textonize();
+	
+	seg->Textonize(textonList);
+	
+	//save the textons
+	for (unsigned int i = 0; i < textonList.size(); i++) {
+		Texton * t = textonList[i];
+		if (nCurCluster != t->getClusterNumber()){
+			nNum = 0;
+			nCurCluster = t->getClusterNumber();
+		}
+		sprintf(filename, "Cluster_%d_Texton_%d.jpg", t->getClusterNumber(), nNum);
+		cvSaveImage(filename,t->getTextonImg());
+
+		nNum++;
+	}
 
 	cvReleaseImage(&pInputImage);
 

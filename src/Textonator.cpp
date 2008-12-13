@@ -1,7 +1,7 @@
 #include "Textonator.h"
 
 Textonator::Textonator(IplImage * Img, int nClusters, int nMinTextonSize):
-m_pImg(Img)
+m_pImg(Img),m_nClusters(nClusters),m_nMinTextonSize(nMinTextonSize)
 {
 	m_pOutImg = cvCreateImage(cvSize(m_pImg->width,m_pImg->height),
 								m_pImg->depth,
@@ -10,9 +10,6 @@ m_pImg(Img)
 	
 	m_pSegmentBoundaries = cvCreateImage(cvGetSize(m_pOutImg), IPL_DEPTH_8U, 1);
   
-	m_nMinTextonSize = nMinTextonSize;
-	m_nClusters = nClusters; 
-
 	m_bgColor = cvScalar(200, 0, 0);
 
 	printf("Minimal Texton Size=%d, Clusters Number=%d\n", 
@@ -40,15 +37,8 @@ void Textonator::blurImage()
 	cvReleaseImage(&pPyrImg);
 }
 
-void Textonator::Textonize()
+void Textonator::Textonize(vector<Texton*>& textonList)
 {
-	char filename[255];
-	sprintf(filename, "OriginalImage.jpg");
-	cvNamedWindow( filename, 1 );
-	cvShowImage( filename, m_pImg );
-	cvWaitKey(0);
-	cvDestroyWindow(filename);
-
 	//we'll start by segmenting and clustering the image
 	Segment();
 
@@ -65,8 +55,10 @@ void Textonator::Textonize()
 
 		//Extract the textons from the cluster 
 		//according to the collected boundaries
-		extractTextons(i);
+		extractTextons(i, textonList);
 	}
+
+	printf("\nTextonization has finished successfully!\n");
 }
 
 void Textonator::Segment()
@@ -97,13 +89,6 @@ void Textonator::Cluster(CFeatureExtraction *pFeatureExtractor)
 	  cvTermCriteria( CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 100, 0.001 ));
     
   cvReleaseMat(&pChannels);
-}
-
-void Textonator::SaveImage(char *filename, IplImage* img)
-{
-	printf("Saving image to: %s\n", filename);
-	if (!cvSaveImage(filename,img))
-		printf("Could not save: %s\n",filename);
 }
 
 void Textonator::RecolorPixel(uchar * pData, 
@@ -242,12 +227,12 @@ int Textonator::scanForTextons(int nCluster, int * pTextonMap)
 	return nTexton;
 }
 
-void Textonator::colorTextons(int nTexton, int nCluster, int * pTextonMap)
+void Textonator::retrieveTextons(int nTexton, int nCluster, int * pTextonMap, vector<Texton*>& textonList)
 {
 	uchar * pData  = (uchar *) m_pOutImg->imageData;
 
-	int nCurCluster = FIRST_TEXTON_NUM;
-	for (int nNum = 0; nCurCluster < nTexton; nCurCluster++, nNum++){
+	int nCurTexton = FIRST_TEXTON_NUM;
+	for (int nNum = 0; nCurTexton < nTexton; nCurTexton++, nNum++){
 
 		//"Replenish" the original image
 		memcpy(pData, (uchar *)m_pImg->imageData, m_pImg->imageSize);
@@ -260,7 +245,7 @@ void Textonator::colorTextons(int nTexton, int nCluster, int * pTextonMap)
 		//figure out the texton dimensions
 		for (int i = 0; i < m_pOutImg->width; i++){
 			for (int j = 0; j < m_pOutImg->height; j++) {
-				if (pTextonMap[j * m_pOutImg->width + i] == nCurCluster)
+				if (pTextonMap[j * m_pOutImg->width + i] == nCurTexton)
 				{
 					if (minX > i) minX = i;
 					if (minY > j) minY = j;
@@ -278,27 +263,21 @@ void Textonator::colorTextons(int nTexton, int nCluster, int * pTextonMap)
 											m_pImg->nChannels);
 		extractTexton(minX, maxX, minY, maxY, pData, pTexton);
 
-		char filename[255];
-/*		sprintf(filename, "Cluster_%d_Texton_%d.jpg", nCluster, nNum);
-		cvNamedWindow( filename );
-		cvShowImage( filename, pTexton );
-		SaveImage(filename, pTexton);
-		cvWaitKey(0);
-		cvDestroyWindow(filename);
-*/
-		cvReleaseImage(&pTexton);
+		Texton* t = new Texton(pTexton, nCluster);
+		//add the texton to the vector
+		textonList.push_back(t);
 
+/*
+		char filename[255];
 		sprintf(filename, "Cluster_%d_Texton_%d.jpg", nCluster, nNum);
 		cvNamedWindow( filename, 1 );
 		printf("Displaying texton #%d\n", nNum);
 		cvShowImage( filename, m_pOutImg );
-	//	SaveImage(filename, m_pOutImg);
+		SaveImage(filename, m_pOutImg);
 		cvWaitKey(0);
 		cvDestroyWindow(filename);
 
-/*		printf("\n");
 
-		
 		ColorWindow(minX, minY, maxX - minX, maxY - minY);
 
 		sprintf(filename, "Cluster_%d_Texton_%d.jpg", nCluster, nNum);
@@ -334,103 +313,134 @@ void Textonator::extractTexton(int minX,
 	}
 }
 
-void Textonator::fixTexton(int nCurDataType, int nValidData1, int nValidData2, int * pTextonMap)
+void Textonator::assignStrayPixels(int ** ppTextonMap, int nSize)
 {
+	int * pTextonMap = *ppTextonMap;
+
+	int nOtherTextons[8];
 	int nCurTexton;
-	int nOtherTextons[4];
-	for (int i = 1; i < m_pOutImg->width - 1; i++){
-		for (int j = 1; j < m_pOutImg->height - 1; j++) {
-			memset(nOtherTextons, -1, 4 *sizeof(int));
+
+	int * pNewTextonMap = new int[nSize];
+	memset(pNewTextonMap, UNDEFINED, nSize*sizeof(int));
+
+	for (int i = 0; i < m_pOutImg->width; i++){
+		for (int j = 0; j < m_pOutImg->height; j++) {
+			//Reset the neighbor pixel associations
+			memset(nOtherTextons, UNDEFINED, 8 *sizeof(int));
 			nCurTexton = pTextonMap[j * m_pOutImg->width + i];
-			if ((nCurTexton != nCurDataType))
+			//we check only out of segemnt data
+			if (nCurTexton != OUT_OF_SEGMENT_DATA) {
+				pNewTextonMap[j * m_pOutImg->width + i] = pTextonMap[j * m_pOutImg->width + i];
 				continue;
-
-			for (int k = j - 1; k > 0; k--){
-				if (pTextonMap[k * m_pOutImg->width + i] != nCurTexton 
-					&& nValidData1 != pTextonMap[k * m_pOutImg->width + i]
-					&& nValidData2 != pTextonMap[k * m_pOutImg->width + i]) {
-					nOtherTextons[0] = pTextonMap[k * m_pOutImg->width + i];
-					break;
-				}
 			}
 
-			for (int k = j + 1; k < m_pOutImg->height - 1; k++){
-				if (pTextonMap[k * m_pOutImg->width + i] != nCurTexton 
-					&& nValidData1 != pTextonMap[k * m_pOutImg->width + i]
-					&& nValidData2 != pTextonMap[k * m_pOutImg->width + i]) {
-					nOtherTextons[1] = pTextonMap[k * m_pOutImg->width + i];
-					break;
-				}
+			if (i > 1){
+				nOtherTextons[0] = pTextonMap[j * m_pOutImg->width + i - 1];
+				if (j < m_pOutImg->height - 1)
+					nOtherTextons[5] = pTextonMap[(j+1) * m_pOutImg->width + i - 1];
 			}
 
-			for (int l = i - 1; l > 0; l--){
-				if (pTextonMap[j * m_pOutImg->width + l] != nCurTexton 
-					&& nValidData1 != pTextonMap[j * m_pOutImg->width + l]
-					&& nValidData2 != pTextonMap[j * m_pOutImg->width + l]) {
-					nOtherTextons[2] = pTextonMap[j * m_pOutImg->width + l];
-					break;
-				}
+			if (i < m_pOutImg->width - 1){
+				nOtherTextons[1] = pTextonMap[j * m_pOutImg->width + i + 1];
+				if (j < m_pOutImg->height - 1)
+					nOtherTextons[4] = pTextonMap[(j+1) * m_pOutImg->width + i + 1];
 			}
 
-			for (int l = i + 1; l < m_pOutImg->width; l++){
-				if (pTextonMap[j * m_pOutImg->width + l] != nCurTexton 
-					&& nValidData1 != pTextonMap[j * m_pOutImg->width + l]
-					&& nValidData2 != pTextonMap[j * m_pOutImg->width + l]) {
-					nOtherTextons[3] = pTextonMap[j * m_pOutImg->width + l];
-					break;
-				}
+			if (j > 1) {
+				nOtherTextons[2] = pTextonMap[(j-1) * m_pOutImg->width + i];
+				if (i < m_pOutImg->width - 1)
+					nOtherTextons[6] = pTextonMap[(j-1) * m_pOutImg->width + i + 1];
+				if (i > 1)
+					nOtherTextons[7] = pTextonMap[(j-1) * m_pOutImg->width + i - 1];
 			}
 
-			int nOtherTexton = (nOtherTextons[0] == -1) ? nOtherTextons[2] : nOtherTextons[0];
-			if (nCurTexton != nOtherTextons[0]) {
-				if ( (nOtherTextons[0] == -1 || nOtherTextons[0] == nOtherTextons[1]) && 
-					(nOtherTextons[1] == -1 || nOtherTextons[1] == nOtherTextons[2]) &&
-					(nOtherTextons[2] == -1 || nOtherTextons[2] == nOtherTextons[3]) &&
-					(nOtherTextons[3] == -1 || nOtherTextons[3] == nOtherTextons[0]) &&
-					(nOtherTextons[0] != OUT_OF_SEGMENT_DATA) &&
-					(nOtherTextons[0] != UNCLUSTERED_DATA)) {
-						if (nOtherTexton != -1)
-							pTextonMap[j * m_pOutImg->width + i] = nOtherTexton;
+			if (j < m_pOutImg->height - 1)
+				nOtherTextons[3] = pTextonMap[(j+1) * m_pOutImg->width + i];
+
+			int nMatchNum = 0;
+			int nCurMatchNum;
+			int nTextonNum = -1;
+			for (int k = 0; k < 8; k++) {
+				nCurMatchNum = 0;
+				for (int l = 0; l < 8; l++){
+					if (nOtherTextons[k] == nOtherTextons[l])
+						nCurMatchNum++;
 				}
+				if (nCurMatchNum >= 7 && nTextonNum == -1)
+					nTextonNum = nOtherTextons[k];
+				nMatchNum += nCurMatchNum;
+			}
+
+			//if there are more than 7 matched neighbors
+			if (nTextonNum >= FIRST_TEXTON_NUM && nMatchNum >= 7*7){
+				pNewTextonMap[j * m_pOutImg->width + i] = nTextonNum;
 			}
 		}
 	}
+
+	//update the texton map with the newly computed one
+	delete [] pTextonMap;
+	*ppTextonMap = pNewTextonMap;
 }
 
-void Textonator::assignRemUntextoned(int * pTextonMap)
+void Textonator::assignRemainingData(int * pTextonMap)
 {
 	int nChanges;
+	int nOtherTextons[8];
+	int nCurTexton;
+
 	do {
 		nChanges = 0;
-		int nOtherTextons[8];
-		for (int i = 1; i < m_pOutImg->width - 1; i++){
-			for (int j = 1; j < m_pOutImg->height - 1; j++) {
-				memset(nOtherTextons, -1, 4 *sizeof(int));
-				int nCurTexton = pTextonMap[j * m_pOutImg->width + i];
-				if (nCurTexton != UNCLUSTERED_DATA)
+		for (int i = 0; i < m_pOutImg->width; i++){
+			for (int j = 0; j < m_pOutImg->height; j++) {
+				//Reset the neighbor pixel associations
+				memset(nOtherTextons, UNDEFINED, 8 *sizeof(int));
+				nCurTexton = pTextonMap[j * m_pOutImg->width + i];
+				//we check only unclustered data
+				if (nCurTexton != UNCLUSTERED_DATA) {
+					pTextonMap[j * m_pOutImg->width + i] = pTextonMap[j * m_pOutImg->width + i];
 					continue;
+				}
 
-				nOtherTextons[0] = pTextonMap[j * m_pOutImg->width + i - 1];
-				nOtherTextons[1] = pTextonMap[j * m_pOutImg->width + i + 1];
-				nOtherTextons[2] = pTextonMap[(j-1) * m_pOutImg->width + i];
-				nOtherTextons[3] = pTextonMap[(j+1) * m_pOutImg->width + i];
+				if (i > 1){
+					nOtherTextons[0] = pTextonMap[j * m_pOutImg->width + i - 1];
+					if (j < m_pOutImg->height - 1)
+						nOtherTextons[5] = pTextonMap[(j+1) * m_pOutImg->width + i - 1];
+				}
 
-				nOtherTextons[4] = pTextonMap[(j+1) * m_pOutImg->width + i + 1];
-				nOtherTextons[5] = pTextonMap[(j+1) * m_pOutImg->width + i - 1];
-				nOtherTextons[6] = pTextonMap[(j-1) * m_pOutImg->width + i + 1];
-				nOtherTextons[7] = pTextonMap[(j-1) * m_pOutImg->width + i - 1];
+				if (i < m_pOutImg->width - 1){
+					nOtherTextons[1] = pTextonMap[j * m_pOutImg->width + i + 1];
+					if (j < m_pOutImg->height - 1)
+						nOtherTextons[4] = pTextonMap[(j+1) * m_pOutImg->width + i + 1];
+				}
+
+				if (j > 1) {
+					nOtherTextons[2] = pTextonMap[(j-1) * m_pOutImg->width + i];
+					if (i < m_pOutImg->width - 1)
+						nOtherTextons[6] = pTextonMap[(j-1) * m_pOutImg->width + i + 1];
+					if (i > 1)
+						nOtherTextons[7] = pTextonMap[(j-1) * m_pOutImg->width + i - 1];
+				}
+
+				if (j < m_pOutImg->height - 1)
+					nOtherTextons[3] = pTextonMap[(j+1) * m_pOutImg->width + i];
 
 				bool fPaint = false;
-				int nClosestTextonColor = -1;
+				int nClosestTextonColor = UNDEFINED;
 				for (int k = 0; k < 8; k++) {
+					if (nOtherTextons[k] == UNDEFINED)
+						continue;
+
+					//If there is only texton near the unassigned pixel, become part of it 
 					if (nOtherTextons[k] >= FIRST_TEXTON_NUM) {
 						if (nClosestTextonColor == -1){
 							nClosestTextonColor = nOtherTextons[k];
 							fPaint = true;
 						}
-						else
+						else {
 							if (nClosestTextonColor != nOtherTextons[k])
 								fPaint = false;
+						}
 					}
 				}
 
@@ -443,44 +453,25 @@ void Textonator::assignRemUntextoned(int * pTextonMap)
 	} while (nChanges != 0);
 }
 
-void Textonator::extractTextons(int nCluster)
+void Textonator::extractTextons(int nCluster, vector<Texton*>& textonList)
 {
 	printf("Extracting textons from cluster #%d:\n\n", nCluster);
 
 	//initialize the texton map
-	int * pTextonMap = new int[m_pOutImg->height * m_pOutImg->width];
-	memset(pTextonMap, 0, m_pOutImg->height * m_pOutImg->width*sizeof(int));
+	int nSize = m_pOutImg->height * m_pOutImg->width;
+	int * pTextonMap = new int[nSize];
+	memset(pTextonMap, 0, nSize*sizeof(int));
 
 	int nTexton = scanForTextons(nCluster, pTextonMap);
-/*
-	for (int i = 0; i < m_pOutImg->width; i++){
-		for (int j = 0; j < m_pOutImg->height; j++) {
-			printf("%c", pTextonMap[j * m_pOutImg->width + i] + 48);
-		}
-		printf("\n");
-	}
 
-	printf("\n");
-*/
-	//assign all the remaining untextoned pixels a texton
-	assignRemUntextoned(pTextonMap);
-/*
-	fixTexton(OUT_OF_SEGMENT_DATA, UNCLUSTERED_DATA, BORDER_DATA, pTextonMap);
-	fixTexton(UNCLUSTERED_DATA, OUT_OF_SEGMENT_DATA, BORDER_DATA, pTextonMap);
-	fixTexton(BORDER_DATA, OUT_OF_SEGMENT_DATA, UNCLUSTERED_DATA, pTextonMap);
+	printf("Fixing textons...\n");
 
-	printf("\n");
-	printf("\n");
-	for (int i = 0; i < m_pOutImg->width; i++){
-		for (int j = 0; j < m_pOutImg->height; j++) {
-			printf("%c", pTextonMap[j * m_pOutImg->width + i] + 48);
-		}
-		printf("\n");
-	}
+	//assign all the remaining untextoned pixels the closest texton
+	assignRemainingData(pTextonMap);
+	//assign any lonely pixels that may appear inside a texton and belong to another cluster to that texton
+	assignStrayPixels(&pTextonMap, nSize);
 
-	printf("\n");
-*/
-	colorTextons(nTexton, nCluster, pTextonMap);
+	retrieveTextons(nTexton, nCluster, pTextonMap, textonList);
 
 	delete [] pTextonMap;
 }
