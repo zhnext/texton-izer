@@ -30,10 +30,11 @@ void Textonator::blurImage()
 										m_pImg->depth,
 										m_pImg->nChannels);
 
-	//gaussian blur (5x5) the image, to smooth out noise
+	//gaussian blur (5x5) the image, to smooth out the texture while preserving edge information
 	cvPyrUp(m_pOutImg, pPyrImg, CV_GAUSSIAN_5x5);
 	cvPyrDown(pPyrImg, m_pOutImg, CV_GAUSSIAN_5x5);
 
+	exit(1);
 	cvReleaseImage(&pPyrImg);
 }
 
@@ -47,7 +48,7 @@ void Textonator::Textonize(vector<Texton*>& textonList)
 		//color the cluster we are currently working on
 		colorCluster(i);
 	
-		//blur the edge, to remove unwanted edges
+		//blur the edge, to remove insignficat edges
 		blurImage();
 
 		//retrieve the canny edges of the cluster
