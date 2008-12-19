@@ -34,7 +34,6 @@ void Textonator::blurImage()
 	cvPyrUp(m_pOutImg, pPyrImg, CV_GAUSSIAN_5x5);
 	cvPyrDown(pPyrImg, m_pOutImg, CV_GAUSSIAN_5x5);
 
-	//exit(1);
 	cvReleaseImage(&pPyrImg);
 }
 
@@ -47,7 +46,7 @@ void Textonator::Textonize(vector<Texton*>& textonList)
 	for (int i = 0;i < m_nClusters; i++) {
 		//color the cluster we are currently working on
 		colorCluster(i);
-	
+
 		//blur the edge, to remove insignficat edges
 		blurImage();
 
@@ -259,7 +258,7 @@ void Textonator::retrieveTextons(int nTexton, int nCluster, int * pTextonMap, ve
 			}
 		}
 
-		IplImage* pTexton = cvCreateImage(cvSize(maxX - minX,maxY - minY), 
+		IplImage* pTexton = cvCreateImage(cvSize(maxX - minX + 1,maxY - minY + 1), 
 											m_pImg->depth,
 											m_pImg->nChannels);
 		extractTexton(minX, maxX, minY, maxY, pData, pTexton);
