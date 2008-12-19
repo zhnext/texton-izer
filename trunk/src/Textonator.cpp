@@ -34,7 +34,7 @@ void Textonator::blurImage()
 	cvPyrUp(m_pOutImg, pPyrImg, CV_GAUSSIAN_5x5);
 	cvPyrDown(pPyrImg, m_pOutImg, CV_GAUSSIAN_5x5);
 
-	exit(1);
+	//exit(1);
 	cvReleaseImage(&pPyrImg);
 }
 
