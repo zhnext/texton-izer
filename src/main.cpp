@@ -8,21 +8,22 @@ int main(int argc, char ** argv)
 	int nNum = 0;
 	int nCurCluster = 0;
 
-	if (argc < 3 || argc > 5) {
-	  std::cout << "Usage: texturesynth image_file_path output_path [cluster_number]" << std::endl;
-	  return (-1);
+	if (argc < 2 || argc > 5) {
+		std::cout << "Usage: texturesynth image_file_path [output_path] [cluster_number]" << std::endl;
+		return (-1);
 	}
 
 	pInputImage = cvLoadImage(argv[1], 1);
 	if (pInputImage == NULL){
-	  std::cout << "The picture " << argv[1] << " could not be loaded." << std::endl;
-	  return (-1);
+		std::cout << "The picture " << argv[1] << " could not be loaded." << std::endl;
+		return (-1);
 	}
 
 	int nMinTextonSize = 20;
 	int clusters = 2;
-	char *strOutPath = argv[2];
-
+	char *strOutPath = "";
+	if (argc > 2)
+		strOutPath = argv[2];
 	if (argc > 3)
 		clusters = atoi(argv[3]);
 	if (argc > 4)
@@ -36,9 +37,9 @@ int main(int argc, char ** argv)
 	//cvDestroyWindow(filename);
 
 	Textonator * seg = new Textonator(pInputImage, clusters, nMinTextonSize);
-	
+
 	seg->Textonize(textonList);
-	
+
 	//save the textons
 	for (unsigned int i = 0; i < textonList.size(); i++) {
 		Texton * t = textonList[i];
