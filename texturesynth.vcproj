@@ -220,6 +220,14 @@
 			</Filter>
 		</Filter>
 		<File
+			RelativePath=".\src\Synthesizer.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\src\Synthesizer.h"
+			>
+		</File>
+		<File
 			RelativePath=".\src\Texton.cpp"
 			>
 		</File>

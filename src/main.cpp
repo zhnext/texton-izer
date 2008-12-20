@@ -19,7 +19,7 @@ int main(int argc, char ** argv)
 	  return (-1);
 	}
 
-	int nMinTextonSize = 20;
+	int nMinTextonSize = 50;
 	int clusters = 2;
 	char *strOutPath = "";
 	if (argc > 2)
@@ -30,11 +30,11 @@ int main(int argc, char ** argv)
 		nMinTextonSize = atoi(argv[4]);
 
 	char filename[255];
-	//sprintf(filename, "Original Image");
-	//cvNamedWindow( filename, 1 );
-	//cvShowImage( filename, pInputImage );
-	//cvWaitKey(0);
-	//cvDestroyWindow(filename);
+	sprintf(filename, "Original Image.jpg");
+	cvNamedWindow( filename, 1 );
+	cvShowImage( filename, pInputImage );
+	cvWaitKey(0);
+	cvDestroyWindow(filename);
 
 	Textonator * seg = new Textonator(pInputImage, clusters, nMinTextonSize);
 	
@@ -48,7 +48,27 @@ int main(int argc, char ** argv)
 			nCurCluster = t->getClusterNumber();
 		}
 		sprintf(filename, "%sCluster_%d_Texton_%d.jpg", strOutPath, t->getClusterNumber(), nNum);
-		cvSaveImage(filename,t->getTextonImg());
+/*		int positionMask = t->getPosition();
+		if (positionMask & Texton::LEFT_BORDER)
+			printf("left border\n");
+		if (positionMask & Texton::TOP_BORDER)
+			printf("top border\n");
+		if (positionMask & Texton::RIGHT_BORDER)
+			printf("right border\n");
+		if (positionMask & Texton::BOTTOM_BORDER)
+			printf("bottom border\n");
+		if (positionMask == 0)
+			printf("no border\n");
+*/
+
+		if (t->isBackground())
+			printf("Background texton\n");
+
+		cvNamedWindow( filename, 1 );
+		cvShowImage( filename, t->getTextonImg() );
+		cvWaitKey(0);
+		cvDestroyWindow(filename);
+		//cvSaveImage(filename,t->getTextonImg());
 
 		nNum++;
 	}
