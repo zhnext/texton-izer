@@ -8,8 +8,8 @@ int main(int argc, char ** argv)
 	int nNum = 0;
 	int nCurCluster = 0;
 
-	if (argc < 3 || argc > 5) {
-	  std::cout << "Usage: texturesynth image_file_path output_path [cluster_number]" << std::endl;
+	if (argc < 2 || argc > 5) {
+	  std::cout << "Usage: texturesynth image_file_path [output_path] [cluster_number]" << std::endl;
 	  return (-1);
 	}
 
@@ -21,8 +21,9 @@ int main(int argc, char ** argv)
 
 	int nMinTextonSize = 20;
 	int clusters = 2;
-	char *strOutPath = argv[2];
-
+	char *strOutPath = "";
+	if (argc > 2)
+		strOutPath = argv[2];
 	if (argc > 3)
 		clusters = atoi(argv[3]);
 	if (argc > 4)
