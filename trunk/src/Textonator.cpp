@@ -227,12 +227,20 @@ int Textonator::scanForTextons(int nCluster, int * pTextonMap)
 	return nTexton;
 }
 
+double ac, bc, cc;
+
 void Textonator::retrieveTextons(int nTexton, int nCluster, int * pTextonMap, vector<Texton*>& textonList)
 {
 	uchar * pData  = (uchar *) m_pOutImg->imageData;
 
+	ac = 0;
+	bc = 0;
+	cc = 0;
 	int nCurTexton = FIRST_TEXTON_NUM;
-	for (int nNum = 0; nCurTexton < nTexton; nCurTexton++, nNum++){
+	int nNum;
+	int nPrevSize = textonList.size();
+
+	for (nNum = 0; nCurTexton < nTexton; nCurTexton++, nNum++){
 
 		//"Replenish" the original image
 		memcpy(pData, (uchar *)m_pImg->imageData, m_pImg->imageSize);
@@ -242,6 +250,8 @@ void Textonator::retrieveTextons(int nTexton, int nCluster, int * pTextonMap, ve
 		int maxX = 0;
 		int maxY = 0;
 
+		CvScalar textonMeans = cvScalarAll(0);
+		int nCount = 0;
 		//figure out the texton dimensions
 		for (int i = 0; i < m_pOutImg->width; i++){
 			for (int j = 0; j < m_pOutImg->height; j++) {
@@ -251,6 +261,12 @@ void Textonator::retrieveTextons(int nTexton, int nCluster, int * pTextonMap, ve
 					if (minY > j) minY = j;
 					if (maxX < i) maxX = i;
 					if (maxY < j) maxY = j;
+
+					nCount++;
+
+					textonMeans.val[0] += pData[j*m_pOutImg->widthStep+i*3+0];
+					textonMeans.val[1] += pData[j*m_pOutImg->widthStep+i*3+1];
+					textonMeans.val[2] += pData[j*m_pOutImg->widthStep+i*3+2];
 				}
 				else {
 					RecolorPixel(pData, j, i, m_pOutImg->widthStep, &m_bgColor);
@@ -258,12 +274,36 @@ void Textonator::retrieveTextons(int nTexton, int nCluster, int * pTextonMap, ve
 			}
 		}
 
-		IplImage* pTexton = cvCreateImage(cvSize(maxX - minX + 1,maxY - minY + 1), 
+		ac += (textonMeans.val[0] / nCount);
+		bc += (textonMeans.val[1] / nCount);
+		cc += (textonMeans.val[2] / nCount);
+
+		textonMeans.val[0] = textonMeans.val[0] / nCount;
+		textonMeans.val[1] = textonMeans.val[1] / nCount;
+		textonMeans.val[2] = textonMeans.val[2] / nCount;
+
+		//printf("\nTexton Color means = (%lf)(%lf)(%lf)\n", textonMeans.val[0],textonMeans.val[1],textonMeans.val[2]);
+
+		int xSize = (maxX - minX == 0) ? 1 : maxX - minX;
+		int ySize = (maxY - minY == 0) ? 1 : maxY - minY;
+		IplImage* pTexton = cvCreateImage(cvSize(xSize,ySize), 
 											m_pImg->depth,
 											m_pImg->nChannels);
+		
+		//printf("nCluster=%d \t", nCluster);
 		extractTexton(minX, maxX, minY, maxY, pData, pTexton);
 
-		Texton* t = new Texton(pTexton, nCluster);
+		int positionMask = Texton::NO_BORDER;
+		if (minX == 0)
+			positionMask |= Texton::LEFT_BORDER;
+		if (minY == 0)
+			positionMask |= Texton::TOP_BORDER;
+		if (maxX == m_pImg->width - 1)
+			positionMask |= Texton::RIGHT_BORDER;
+		if (maxY == m_pImg->height - 1)
+			positionMask |= Texton::BOTTOM_BORDER;
+
+		Texton* t = new Texton(pTexton, nCluster, positionMask, textonMeans);
 		//add the texton to the vector
 		textonList.push_back(t);
 
@@ -288,6 +328,30 @@ void Textonator::retrieveTextons(int nTexton, int nCluster, int * pTextonMap, ve
 		cvDestroyWindow(filename);
 */
 	}
+	ac /= nNum;
+	bc /= nNum;
+	cc /= nNum;
+	//printf("total average (%lf,%lf,%lf)\n", ac, bc, cc);
+	int nErrs = 0;
+	for (int nCurTexton = 0; nCurTexton < nNum; nCurTexton++) {
+		CvScalar tMeans = textonList[nPrevSize + nCurTexton]->getMeans();
+		//printf("\nRelative Texton Color mean = (%lf, %lf, %lf)\n", ac - tMeans.val[0], bc - tMeans.val[1],cc - tMeans.val[2]);
+		double relativeErr = ( (ac - tMeans.val[0])*(ac - tMeans.val[0])
+			+ (bc - tMeans.val[1]) * (bc - tMeans.val[1]) + (cc - tMeans.val[2]) * (cc - tMeans.val[2]) )/nNum;
+		//printf("Relative error = %lf\n", relativeErr );
+		if (relativeErr > 5)
+			nErrs++;
+	}
+
+	printf("Errors Number=%d, error/num=%lf\n",nErrs, (float)nErrs/(float)nNum);
+	printf ("nCluster %d is %s\n", nCluster, (nErrs > 5)? "Not background" : "background");
+
+	if (nErrs < 5) {
+		for (int nCurTexton = 0; nCurTexton < nNum; nCurTexton++) {
+			textonList[nPrevSize + nCurTexton]->setBackground();
+		}
+	}
+
 }
 
 void Textonator::extractTexton(int minX, 
@@ -308,6 +372,7 @@ void Textonator::extractTexton(int minX,
 			color.val[0] = pImageData[j*step+i*3+0];
 			color.val[1] = pImageData[j*step+i*3+1];
 			color.val[2] = pImageData[j*step+i*3+2];
+
 			RecolorPixel(pImData, j - minY, i - minX, pTexton->widthStep, &color);
 		}
 	}
