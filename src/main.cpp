@@ -1,10 +1,13 @@
 #include <iostream>
 #include "Textonator.h"
+#include "Synthesizer.h"
+
+#include <time.h>
 
 int main(int argc, char ** argv)
 {
 	IplImage * pInputImage;
-	vector<Texton*> textonList;
+	vector<Cluster> clusterList;
 	int nNum = 0;
 	int nCurCluster = 0;
 
@@ -30,51 +33,49 @@ int main(int argc, char ** argv)
 		nMinTextonSize = atoi(argv[4]);
 
 	char filename[255];
-	sprintf(filename, "Original Image.jpg");
+	sprintf_s(filename, 255,"Original Image");
 	cvNamedWindow( filename, 1 );
 	cvShowImage( filename, pInputImage );
+	cvWaitKey(1000);
+	//cvDestroyWindow(filename);
+
+	Textonator * textonator = new Textonator(pInputImage, clusters, nMinTextonSize);
+	textonator->textonize(clusterList);
+	
+	//save the textons
+	/*for (unsigned int i = 0; i < clusterList.size(); i++) {
+		Cluster cluster = clusterList[i];
+		for (int j = 0; j < cluster.m_nClusterSize; j++){
+			Texton ** tList = cluster.m_textonList;
+			sprintf_s(filename, 255,"%sCluster_%d_Texton_%d.jpg", strOutPath, tList[j]->getClusterNumber(), j);
+
+	//		if (tList[j]->isBackground())
+	//			printf("Background texton\n");
+
+			cvNamedWindow( filename, 1 );
+			cvShowImage( filename, tList[j]->getTextonImg() );
+			cvWaitKey(0);
+			cvDestroyWindow(filename);
+			//cvSaveImage(filename,t->getTextonImg());
+		}
+	}*/
+
+	DWORD time1 = GetTickCount();
+	Synthesizer synthesizer;
+	IplImage * result = synthesizer.synthesize(300, 300, pInputImage->depth, pInputImage->nChannels, clusterList);
+	DWORD time2 = GetTickCount();
+
+	printf("diff time = %ld\n", time2 - time1);
+
+	sprintf_s(filename, 255,"Stones_Result.jpg");
+	cvNamedWindow( filename, 1 );
+	cvShowImage( filename, result );
+	//cvSaveImage(filename,result);
 	cvWaitKey(0);
 	cvDestroyWindow(filename);
 
-	Textonator * seg = new Textonator(pInputImage, clusters, nMinTextonSize);
-	
-	seg->Textonize(textonList);
-	
-	//save the textons
-	for (unsigned int i = 0; i < textonList.size(); i++) {
-		Texton * t = textonList[i];
-		if (nCurCluster != t->getClusterNumber()){
-			nNum = 0;
-			nCurCluster = t->getClusterNumber();
-		}
-		sprintf(filename, "%sCluster_%d_Texton_%d.jpg", strOutPath, t->getClusterNumber(), nNum);
-/*		int positionMask = t->getPosition();
-		if (positionMask & Texton::LEFT_BORDER)
-			printf("left border\n");
-		if (positionMask & Texton::TOP_BORDER)
-			printf("top border\n");
-		if (positionMask & Texton::RIGHT_BORDER)
-			printf("right border\n");
-		if (positionMask & Texton::BOTTOM_BORDER)
-			printf("bottom border\n");
-		if (positionMask == 0)
-			printf("no border\n");
-*/
-
-		if (t->isBackground())
-			printf("Background texton\n");
-
-		cvNamedWindow( filename, 1 );
-		cvShowImage( filename, t->getTextonImg() );
-		cvWaitKey(0);
-		cvDestroyWindow(filename);
-		//cvSaveImage(filename,t->getTextonImg());
-
-		nNum++;
-	}
-
 	cvReleaseImage(&pInputImage);
 
-	delete seg;
+	delete textonator;
 	return (0);
 }

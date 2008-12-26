@@ -220,6 +220,10 @@
 			</Filter>
 		</Filter>
 		<File
+			RelativePath=".\src\Cluster.h"
+			>
+		</File>
+		<File
 			RelativePath=".\src\Synthesizer.cpp"
 			>
 		</File>
