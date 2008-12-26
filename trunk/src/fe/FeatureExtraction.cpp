@@ -320,7 +320,7 @@ CFeatureExtraction::~CFeatureExtraction()
 
 //////////////////////////////////////////////////////////////////////////////////////
 
-bool CFeatureExtraction::Run()
+bool CFeatureExtraction::run()
 {
 	printf("Starting the feature extraction process.\n");
 

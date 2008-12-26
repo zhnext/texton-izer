@@ -7,7 +7,7 @@
 #include <highgui.h>
 
 #include "fe/FeatureExtraction.h"
-#include "Texton.h"
+#include "Cluster.h"
 
 using std::vector;
 
@@ -26,30 +26,32 @@ public:
 	Textonator(IplImage * Img, int nClusters, int nMinTextonSize);
 	virtual ~Textonator();
 
-	void	Textonize(vector<Texton*>& textonList);
+	void	textonize(vector<Cluster>& clusterList);
 
 private:
 	
-	void	ColorWindow(int x, int y, int sizeX, int sizeY);
-	void	RecolorPixel(uchar * pData, int y, int x, int step, CvScalar * pColor);
+	void	colorWindow(int x, int y, int sizeX, int sizeY);
+	void	recolorPixel(uchar * pData, int y, int x, int step, CvScalar * pColor);
 
-	void	Segment();
-	void	Cluster(CFeatureExtraction *pFeatureExtractor);
+	void	segment();
+	void	cluster(CFeatureExtraction *pFeatureExtractor);
 
     void	colorCluster(int nCluster);
 	void	blurImage();
 	void	cannyEdgeDetect();
-	void	extractTextons(int nCluster, vector<Texton*>& textonList);
+	void	extractTextons(int nCluster, vector<Cluster>& clusterList, int * pTextonMap);
 
 	int		scanForTextons(int nCluster, int * pTextonMap);
 	void	colorTextonMap(uchar *pBorderData,int * pTextonMap,int nCluster);
 	void	assignTextons(int x, int y, uchar * pData, int * pTextonMap, int nClust);
-	void	retrieveTextons(int nTexton, int nCluster, int * pTextonMap, vector<Texton*>& textonList);
+	void	retrieveTextons(int nTexton, int nCluster, int * pTextonMap, vector<Cluster>& clusterList);
 	
 	void	assignRemainingData(int * pTextonMap);
-	void	assignStrayPixels(int ** ppTextonMap, int nSize);
+	void	assignStrayPixels(int * ppTextonMap, int nSize);
 
 	void	extractTexton(int minX, int maxX, int minY, int maxY, uchar * pImageData, IplImage* pTexton);
+
+	void	computeCoOccurences(vector<int*> pTextonMapList, vector<Cluster>& clusterList);
 
 private:
 

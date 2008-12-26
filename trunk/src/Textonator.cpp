@@ -31,23 +31,28 @@ void Textonator::blurImage()
 										m_pImg->nChannels);
 
 	//gaussian blur (5x5) the image, to smooth out the texture while preserving edge information
-	cvPyrUp(m_pOutImg, pPyrImg, CV_GAUSSIAN_5x5);
-	cvPyrDown(pPyrImg, m_pOutImg, CV_GAUSSIAN_5x5);
+	//cvPyrUp(m_pOutImg, pPyrImg, CV_GAUSSIAN_5x5);
+	//cvPyrDown(pPyrImg, m_pOutImg, CV_GAUSSIAN_5x5);
+	cvSmooth(m_pOutImg, m_pOutImg);
 
 	cvReleaseImage(&pPyrImg);
 }
 
-void Textonator::Textonize(vector<Texton*>& textonList)
+void Textonator::textonize(vector<Cluster>& clusterList)
 {
+	vector<int*> pTextonMapList;
+
 	//we'll start by segmenting and clustering the image
-	Segment();
+	segment();
 
 	printf("\nTextonizing the image...\n");
 	for (int i = 0;i < m_nClusters; i++) {
+		int * pTextonMap = new int[m_pOutImg->height * m_pOutImg->width];
+
 		//color the cluster we are currently working on
 		colorCluster(i);
 
-		//blur the edge, to remove insignficat edges
+		//blur the edge, to remove insignificant edges
 		blurImage();
 
 		//retrieve the canny edges of the cluster
@@ -55,25 +60,28 @@ void Textonator::Textonize(vector<Texton*>& textonList)
 
 		//Extract the textons from the cluster 
 		//according to the collected boundaries
-		extractTextons(i, textonList);
+		extractTextons(i, clusterList, pTextonMap);
+
+		pTextonMapList.push_back(pTextonMap);
 	}
 
+	computeCoOccurences(pTextonMapList, clusterList);
 	printf("\nTextonization has finished successfully!\n");
 }
 
-void Textonator::Segment()
+void Textonator::segment()
 {
   printf("Segmenting the image...\n");
 
   CFeatureExtraction *pFeatureExtractor = new CFeatureExtraction(m_pImg);
-  pFeatureExtractor->Run();
+  pFeatureExtractor->run();
 
-  Cluster(pFeatureExtractor);
+  cluster(pFeatureExtractor);
 
   delete pFeatureExtractor;
 }
 
-void Textonator::Cluster(CFeatureExtraction *pFeatureExtractor) 
+void Textonator::cluster(CFeatureExtraction *pFeatureExtractor) 
 {
   CvMat * pChannels = 
 	  cvCreateMat(pFeatureExtractor->GetPrincipalChannels()->rows,
@@ -91,13 +99,12 @@ void Textonator::Cluster(CFeatureExtraction *pFeatureExtractor)
   cvReleaseMat(&pChannels);
 }
 
-void Textonator::RecolorPixel(uchar * pData, 
+void Textonator::recolorPixel(uchar * pData, 
 							  int y, 
 							  int x, 
 							  int step, 
 							  CvScalar * pColor)
 {
-	// Only take UV components
 	pData[y*step+x*3+0] = (uchar)pColor->val[0];
 	pData[y*step+x*3+1] = (uchar)pColor->val[1];
 	pData[y*step+x*3+2] = (uchar)pColor->val[2];
@@ -112,7 +119,7 @@ void Textonator::colorCluster(int nCluster)
   for (int i=0; i<m_pImg->height; i++){
       for (int j=0; j<m_pImg->width; j++) {
           if (m_pClusters->data.i[i*m_pImg->width+j] != nCluster) {
-            RecolorPixel(pData, i,j, m_pImg->widthStep, &color);
+            recolorPixel(pData, i,j, m_pImg->widthStep, &color);
           }
 	  }
   }
@@ -128,7 +135,8 @@ void Textonator::cannyEdgeDetect()
 
 	cvCvtColor(m_pOutImg, bn, CV_BGR2GRAY);
 
-	cvCanny(bn, m_pSegmentBoundaries, 80, 110);
+	//cvCanny(bn, m_pSegmentBoundaries, 80, 110);
+	cvCanny(bn, m_pSegmentBoundaries, 70, 90);
 
     cvReleaseImage(&bn);
 }
@@ -224,12 +232,12 @@ int Textonator::scanForTextons(int nCluster, int * pTextonMap)
 		}
 	}
 
-	return nTexton;
+	return (nTexton - FIRST_TEXTON_NUM);
 }
 
 double ac, bc, cc;
 
-void Textonator::retrieveTextons(int nTexton, int nCluster, int * pTextonMap, vector<Texton*>& textonList)
+void Textonator::retrieveTextons(int nClusterSize, int nCluster, int * pTextonMap, vector<Cluster>& clusterList)
 {
 	uchar * pData  = (uchar *) m_pOutImg->imageData;
 
@@ -237,10 +245,9 @@ void Textonator::retrieveTextons(int nTexton, int nCluster, int * pTextonMap, ve
 	bc = 0;
 	cc = 0;
 	int nCurTexton = FIRST_TEXTON_NUM;
-	int nNum;
-	int nPrevSize = textonList.size();
+	Texton ** curTextonList = new Texton*[nClusterSize];
 
-	for (nNum = 0; nCurTexton < nTexton; nCurTexton++, nNum++){
+	for (int nNum = 0; nNum < nClusterSize; nCurTexton++, nNum++){
 
 		//"Replenish" the original image
 		memcpy(pData, (uchar *)m_pImg->imageData, m_pImg->imageSize);
@@ -269,7 +276,7 @@ void Textonator::retrieveTextons(int nTexton, int nCluster, int * pTextonMap, ve
 					textonMeans.val[2] += pData[j*m_pOutImg->widthStep+i*3+2];
 				}
 				else {
-					RecolorPixel(pData, j, i, m_pOutImg->widthStep, &m_bgColor);
+					recolorPixel(pData, j, i, m_pOutImg->widthStep, &m_bgColor);
 				}
 			}
 		}
@@ -284,13 +291,14 @@ void Textonator::retrieveTextons(int nTexton, int nCluster, int * pTextonMap, ve
 
 		//printf("\nTexton Color means = (%lf)(%lf)(%lf)\n", textonMeans.val[0],textonMeans.val[1],textonMeans.val[2]);
 
+		SBox boundingBox(minX, minY, maxX, maxY);
+
 		int xSize = (maxX - minX == 0) ? 1 : maxX - minX;
 		int ySize = (maxY - minY == 0) ? 1 : maxY - minY;
 		IplImage* pTexton = cvCreateImage(cvSize(xSize,ySize), 
 											m_pImg->depth,
 											m_pImg->nChannels);
 		
-		//printf("nCluster=%d \t", nCluster);
 		extractTexton(minX, maxX, minY, maxY, pData, pTexton);
 
 		int positionMask = Texton::NO_BORDER;
@@ -303,9 +311,8 @@ void Textonator::retrieveTextons(int nTexton, int nCluster, int * pTextonMap, ve
 		if (maxY == m_pImg->height - 1)
 			positionMask |= Texton::BOTTOM_BORDER;
 
-		Texton* t = new Texton(pTexton, nCluster, positionMask, textonMeans);
-		//add the texton to the vector
-		textonList.push_back(t);
+		Texton* t = new Texton(pTexton, nCluster, positionMask, textonMeans, boundingBox);
+		curTextonList[nNum] = t;
 
 /*
 		char filename[255];
@@ -328,28 +335,35 @@ void Textonator::retrieveTextons(int nTexton, int nCluster, int * pTextonMap, ve
 		cvDestroyWindow(filename);
 */
 	}
-	ac /= nNum;
-	bc /= nNum;
-	cc /= nNum;
+
+	//create the cluster and add it to the cluster list
+	Cluster cluster;
+	cluster.m_textonList = curTextonList;
+	cluster.m_nClusterSize = nClusterSize;
+	clusterList.push_back(cluster);
+
+	//FIXME: BEAUTIFY ME
+
+	ac /= nClusterSize;
+	bc /= nClusterSize;
+	cc /= nClusterSize;
 	//printf("total average (%lf,%lf,%lf)\n", ac, bc, cc);
 	int nErrs = 0;
-	for (int nCurTexton = 0; nCurTexton < nNum; nCurTexton++) {
-		CvScalar tMeans = textonList[nPrevSize + nCurTexton]->getMeans();
+	for (int nCurTexton = 0; nCurTexton < nClusterSize; nCurTexton++) {
+		CvScalar tMeans = clusterList[nCluster].m_textonList[nCurTexton]->getMeans();
 		//printf("\nRelative Texton Color mean = (%lf, %lf, %lf)\n", ac - tMeans.val[0], bc - tMeans.val[1],cc - tMeans.val[2]);
 		double relativeErr = ( (ac - tMeans.val[0])*(ac - tMeans.val[0])
-			+ (bc - tMeans.val[1]) * (bc - tMeans.val[1]) + (cc - tMeans.val[2]) * (cc - tMeans.val[2]) )/nNum;
+			+ (bc - tMeans.val[1]) * (bc - tMeans.val[1]) + (cc - tMeans.val[2]) * (cc - tMeans.val[2]) )/nClusterSize;
 		//printf("Relative error = %lf\n", relativeErr );
 		if (relativeErr > 5)
 			nErrs++;
 	}
 
-	printf("Errors Number=%d, error/num=%lf\n",nErrs, (float)nErrs/(float)nNum);
-	printf ("nCluster %d is %s\n", nCluster, (nErrs > 5)? "Not background" : "background");
+	printf("Errors Number=%d, error/num=%lf\n",nErrs, (float)nErrs/(float)nClusterSize);
+	printf ("nCluster %d is %s\n", nCluster, (nErrs > MIN(nClusterSize - 1, 5))? "Not background" : "background");
 
-	if (nErrs < 5) {
-		for (int nCurTexton = 0; nCurTexton < nNum; nCurTexton++) {
-			textonList[nPrevSize + nCurTexton]->setBackground();
-		}
+	if (nErrs <= MIN(nClusterSize - 1, 5)) {
+		clusterList[nCluster].setBackground();
 	}
 
 }
@@ -373,15 +387,13 @@ void Textonator::extractTexton(int minX,
 			color.val[1] = pImageData[j*step+i*3+1];
 			color.val[2] = pImageData[j*step+i*3+2];
 
-			RecolorPixel(pImData, j - minY, i - minX, pTexton->widthStep, &color);
+			recolorPixel(pImData, j - minY, i - minX, pTexton->widthStep, &color);
 		}
 	}
 }
 
-void Textonator::assignStrayPixels(int ** ppTextonMap, int nSize)
+void Textonator::assignStrayPixels(int * pTextonMap, int nSize)
 {
-	int * pTextonMap = *ppTextonMap;
-
 	int nOtherTextons[8];
 	int nCurTexton;
 
@@ -443,9 +455,9 @@ void Textonator::assignStrayPixels(int ** ppTextonMap, int nSize)
 		}
 	}
 
-	//update the texton map with the newly computed one
-	delete [] pTextonMap;
-	*ppTextonMap = pNewTextonMap;
+	memcpy(pTextonMap, pNewTextonMap, nSize * sizeof(int));
+
+	delete [] pNewTextonMap;
 }
 
 void Textonator::assignRemainingData(int * pTextonMap)
@@ -518,30 +530,29 @@ void Textonator::assignRemainingData(int * pTextonMap)
 	} while (nChanges != 0);
 }
 
-void Textonator::extractTextons(int nCluster, vector<Texton*>& textonList)
+void Textonator::extractTextons(int nCluster, vector<Cluster>& clusterList, int * pTextonMap)
 {
 	printf("Extracting textons from cluster #%d:\n\n", nCluster);
 
 	//initialize the texton map
 	int nSize = m_pOutImg->height * m_pOutImg->width;
-	int * pTextonMap = new int[nSize];
 	memset(pTextonMap, 0, nSize*sizeof(int));
 
-	int nTexton = scanForTextons(nCluster, pTextonMap);
+	int nClusterSize = scanForTextons(nCluster, pTextonMap);
 
 	printf("Fixing textons...\n");
 
 	//assign all the remaining untextoned pixels the closest texton
 	assignRemainingData(pTextonMap);
 	//assign any lonely pixels that may appear inside a texton and belong to another cluster to that texton
-	assignStrayPixels(&pTextonMap, nSize);
+	assignStrayPixels(pTextonMap, nSize);
 
-	retrieveTextons(nTexton, nCluster, pTextonMap, textonList);
+	retrieveTextons(nClusterSize, nCluster, pTextonMap, clusterList);
 
-	delete [] pTextonMap;
+	//delete [] pTextonMap;
 }
 
-void Textonator::ColorWindow(int x, int y, int sizeX, int sizeY)
+void Textonator::colorWindow(int x, int y, int sizeX, int sizeY)
 {
   uchar * pData  = (uchar *)m_pOutImg->imageData;
   uchar * pData2  = (uchar *)m_pImg->imageData;
@@ -558,21 +569,108 @@ void Textonator::ColorWindow(int x, int y, int sizeX, int sizeY)
 
   for (int i=x; i<x+sizeX; i++)
   {
-	  RecolorPixel(pData, y,i, step, &color);
-	  RecolorPixel(pData, y+1,i, step, &color);
+	  recolorPixel(pData, y,i, step, &color);
+	  recolorPixel(pData, y+1,i, step, &color);
 
-	  RecolorPixel(pData, y+sizeY,i, step, &color);
+	  recolorPixel(pData, y+sizeY,i, step, &color);
 	  if (y+sizeY+1 < m_pImg->height)
-		RecolorPixel(pData, y+sizeY+1,i, step, &color);
+		recolorPixel(pData, y+sizeY+1,i, step, &color);
   }
 
   for (int j=y; j<y+sizeY; j++) 
   {
-	  RecolorPixel(pData, j,x, step, &color);
-	  RecolorPixel(pData, j,x+1, step, &color);
+	  recolorPixel(pData, j,x, step, &color);
+	  recolorPixel(pData, j,x+1, step, &color);
 
-	  RecolorPixel(pData, j,x+sizeX, step, &color);
+	  recolorPixel(pData, j,x+sizeX, step, &color);
 	  if (x+sizeX+1 < m_pImg->height)
-		  RecolorPixel(pData, j,x+sizeX + 1, step, &color);
+		  recolorPixel(pData, j,x+sizeX + 1, step, &color);
   }
 }
+
+void Textonator::computeCoOccurences(vector<int*> pTextonMapList, vector<Cluster>& clusterList)
+{
+	uchar * pData  = (uchar *) m_pOutImg->imageData;
+	for (unsigned int nCluster = 0; nCluster < pTextonMapList.size(); nCluster++) {
+
+		int nCurTexton = FIRST_TEXTON_NUM;
+		for (int nNum = 0; nNum < clusterList[nCluster].m_nClusterSize; nCurTexton++, nNum++){
+
+			//"Replenish" the original image
+			memcpy(pData, (uchar *)m_pImg->imageData, m_pImg->imageSize);
+
+			for (int i = 0; i < m_pOutImg->width; i++){
+				for (int j = 0; j < m_pOutImg->height; j++) {
+					if (pTextonMapList[nCluster][j * m_pOutImg->width + i] != nCurTexton)
+						recolorPixel(pData, j, i, m_pOutImg->widthStep, &m_bgColor);
+				}
+			}
+
+			
+			vector<int> coOccurences;
+
+			//FIXME: if it stays this way, then we don't need any loop - just dilate 5 iterations
+			printf("Texton num = %d\n", nCurTexton);
+			for (int i =0 ; i < 20 ;i ++){ 
+				cvDilate(m_pOutImg, m_pOutImg);
+
+				//texton nNum
+				for (int i = 0; i < m_pOutImg->width; i++){
+					for (int j = 0; j < m_pOutImg->height; j++) {
+						if (pData[j*m_pOutImg->widthStep+i*3+0] != m_bgColor.val[0] ||
+							pData[j*m_pOutImg->widthStep+i*3+1] != m_bgColor.val[1] ||
+							pData[j*m_pOutImg->widthStep+i*3+2] != m_bgColor.val[2]){
+
+								for (int nCurrentCluster = 0; nCurrentCluster < m_nClusters; nCurrentCluster++){
+									if (pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i] < FIRST_TEXTON_NUM)
+										continue;
+
+									if (pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i] != nCurTexton ||
+										pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i] == nCurTexton && nCurrentCluster != nCluster){
+
+											bool isInList = false;
+											for (unsigned int c = 0; c < coOccurences.size(); c+=2){
+												if (coOccurences[c] == pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i]
+												&& coOccurences[c+1] == nCurrentCluster)
+													isInList = true;
+											}
+
+											if (isInList == false){
+												coOccurences.push_back(pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i]);
+												coOccurences.push_back(nCurrentCluster);
+											}
+									}
+								}
+						}
+					}
+				}
+			}
+
+
+			vector<CoOccurences> coOccurencesList;
+			Texton * orgT = clusterList[nCluster].m_textonList[nNum];
+
+			for (unsigned int c = 0; c < coOccurences.size(); c+=2) {
+
+				Texton *t = clusterList[coOccurences[c+1]].m_textonList[coOccurences[c] - FIRST_TEXTON_NUM];
+				SBox orgBox = orgT->getBoundingBox();
+				SBox box = t->getBoundingBox();
+
+				int xDst = 0;
+				int yDst = 0;
+
+				//distance will always be from the bottom-right point of the original texton to the
+				//up-left point of the current texton
+				xDst = box.minX - orgBox.minX;
+				yDst = box.minY - orgBox.minY;
+
+				CoOccurences cooccurence(xDst, yDst, coOccurences[c+1]);
+				coOccurencesList.push_back(cooccurence);		
+			}
+
+			orgT->setCoOccurences(coOccurencesList);
+			
+		}
+	}
+}
+		

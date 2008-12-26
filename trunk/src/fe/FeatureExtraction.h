@@ -22,7 +22,7 @@ class CFeatureExtraction
 		CFeatureExtraction(IplImage * pSrcImg);
 		virtual ~CFeatureExtraction();
 
-		bool Run();
+		bool run();
 		
 	public:
 		CvMat ** GetColorChannelsArr()  { return m_pColorChannelsArr; }
