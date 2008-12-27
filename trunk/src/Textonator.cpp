@@ -247,6 +247,9 @@ void Textonator::retrieveTextons(int nClusterSize, int nCluster, int * pTextonMa
 	int nCurTexton = FIRST_TEXTON_NUM;
 	Texton ** curTextonList = new Texton*[nClusterSize];
 
+	//create the new cluster
+	Cluster cluster;
+
 	for (int nNum = 0; nNum < nClusterSize; nCurTexton++, nNum++){
 
 		//"Replenish" the original image
@@ -295,6 +298,10 @@ void Textonator::retrieveTextons(int nClusterSize, int nCluster, int * pTextonMa
 
 		int xSize = (maxX - minX == 0) ? 1 : maxX - minX;
 		int ySize = (maxY - minY == 0) ? 1 : maxY - minY;
+
+		if (xSize >= m_pImg->width - 1 && ySize >= m_pImg->height - 1)
+			cluster.setImageFilling();
+
 		IplImage* pTexton = cvCreateImage(cvSize(xSize,ySize), 
 											m_pImg->depth,
 											m_pImg->nChannels);
@@ -337,7 +344,6 @@ void Textonator::retrieveTextons(int nClusterSize, int nCluster, int * pTextonMa
 	}
 
 	//create the cluster and add it to the cluster list
-	Cluster cluster;
 	cluster.m_textonList = curTextonList;
 	cluster.m_nClusterSize = nClusterSize;
 	clusterList.push_back(cluster);
@@ -592,41 +598,63 @@ void Textonator::computeCoOccurences(vector<int*> pTextonMapList, vector<Cluster
 {
 	uchar * pData  = (uchar *) m_pOutImg->imageData;
 	for (unsigned int nCluster = 0; nCluster < pTextonMapList.size(); nCluster++) {
+		int nOffsetCurTexton = FIRST_TEXTON_NUM;
 
-		int nCurTexton = FIRST_TEXTON_NUM;
-		for (int nNum = 0; nNum < clusterList[nCluster].m_nClusterSize; nCurTexton++, nNum++){
+		//this cluster is probably background as it fills the whole image and cannot really be used
+		if (clusterList[nCluster].isImageFilling())
+			continue;
 
+		for (int nCurTexton = 0; nCurTexton < clusterList[nCluster].m_nClusterSize; nCurTexton++, nOffsetCurTexton++){
+			Texton * curTexton = clusterList[nCluster].m_textonList[nCurTexton];
 			//"Replenish" the original image
 			memcpy(pData, (uchar *)m_pImg->imageData, m_pImg->imageSize);
 
+			CvScalar bg = cvScalarAll(0);
 			for (int i = 0; i < m_pOutImg->width; i++){
 				for (int j = 0; j < m_pOutImg->height; j++) {
-					if (pTextonMapList[nCluster][j * m_pOutImg->width + i] != nCurTexton)
-						recolorPixel(pData, j, i, m_pOutImg->widthStep, &m_bgColor);
+					if (pTextonMapList[nCluster][j * m_pOutImg->width + i] != nOffsetCurTexton){
+						recolorPixel(pData, j, i, m_pOutImg->widthStep, &bg);
+					}
 				}
 			}
-
 			
 			vector<int> coOccurences;
-
+			coOccurences.empty();
+/*
+			char filename[255];
+			cvNamedWindow( filename, 1 );
+			cvShowImage( filename, m_pOutImg );
+			cvWaitKey(0);
+			cvDestroyWindow(filename);
+*/
 			//FIXME: if it stays this way, then we don't need any loop - just dilate 5 iterations
 			printf("Texton num = %d\n", nCurTexton);
-			for (int i =0 ; i < 20 ;i ++){ 
+			for (int nDilation =0 ; nDilation < 50; nDilation++){ 
 				cvDilate(m_pOutImg, m_pOutImg);
-
-				//texton nNum
+/*
+				cvNamedWindow( filename, 1 );
+				cvShowImage( filename, m_pOutImg );
+				cvWaitKey(0);
+				cvDestroyWindow(filename);
+*/
+				//printf("(%d) coOccurences.size=%d\n", nDilation, coOccurences.size()/2);
+				//texton nCurTexton
 				for (int i = 0; i < m_pOutImg->width; i++){
 					for (int j = 0; j < m_pOutImg->height; j++) {
-						if (pData[j*m_pOutImg->widthStep+i*3+0] != m_bgColor.val[0] ||
-							pData[j*m_pOutImg->widthStep+i*3+1] != m_bgColor.val[1] ||
-							pData[j*m_pOutImg->widthStep+i*3+2] != m_bgColor.val[2]){
+						if (pData[j*m_pOutImg->widthStep+i*3+0] != bg.val[0] ||
+							pData[j*m_pOutImg->widthStep+i*3+1] != bg.val[1] ||
+							pData[j*m_pOutImg->widthStep+i*3+2] != bg.val[2]){
 
 								for (int nCurrentCluster = 0; nCurrentCluster < m_nClusters; nCurrentCluster++){
+									//this cluster is probably background as it fills the whole image and cannot really be used
+									if (clusterList[nCurrentCluster].isImageFilling())
+										continue;
+
 									if (pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i] < FIRST_TEXTON_NUM)
 										continue;
 
-									if (pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i] != nCurTexton ||
-										pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i] == nCurTexton && nCurrentCluster != nCluster){
+									if (pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i] != nOffsetCurTexton ||
+										pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i] == nOffsetCurTexton && nCurrentCluster != nCluster){
 
 											bool isInList = false;
 											for (unsigned int c = 0; c < coOccurences.size(); c+=2){
@@ -636,6 +664,12 @@ void Textonator::computeCoOccurences(vector<int*> pTextonMapList, vector<Cluster
 											}
 
 											if (isInList == false){
+												//remember the size of the area where there is no texton intersection
+												if (coOccurences.size() == 0){
+													curTexton->setDilationArea(nDilation + 1);
+													//printf("(%d) nDilation=%d\n", nCurTexton, nDilation + 1);
+												}
+
 												coOccurences.push_back(pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i]);
 												coOccurences.push_back(nCurrentCluster);
 											}
@@ -648,12 +682,29 @@ void Textonator::computeCoOccurences(vector<int*> pTextonMapList, vector<Cluster
 
 
 			vector<CoOccurences> coOccurencesList;
-			Texton * orgT = clusterList[nCluster].m_textonList[nNum];
+
+			if (curTexton->getPosition() != Texton::NO_BORDER) {
+				//printf("a side cluster. not used...\n");
+				continue;
+			}
+/*
+			char filename[255];
+			sprintf_s(filename, 255,"texton");
+			cvNamedWindow( filename, 1 );
+			cvShowImage( filename, curTexton->getTextonImg() );
+*/
+			int fSides[4];
+			memset(fSides, 0, 4 * sizeof(int));
 
 			for (unsigned int c = 0; c < coOccurences.size(); c+=2) {
 
 				Texton *t = clusterList[coOccurences[c+1]].m_textonList[coOccurences[c] - FIRST_TEXTON_NUM];
-				SBox orgBox = orgT->getBoundingBox();
+				if (t->getPosition() != Texton::NO_BORDER) {
+					//printf("a side cluster. avoid for now...\n");
+					continue;
+				}
+
+				SBox orgBox = curTexton->getBoundingBox();
 				SBox box = t->getBoundingBox();
 
 				int xDst = 0;
@@ -664,13 +715,62 @@ void Textonator::computeCoOccurences(vector<int*> pTextonMapList, vector<Cluster
 				xDst = box.minX - orgBox.minX;
 				yDst = box.minY - orgBox.minY;
 
+				//printf("cluster %d texton %d, xDst=%d, yDst=%d\n", coOccurences[c+1], coOccurences[c] - FIRST_TEXTON_NUM, xDst, yDst);
+				/*	char filename[255];
+					sprintf_s(filename, 255,"occurence_%d", c);
+					cvNamedWindow( filename, 1 );
+					cvShowImage( filename, t->getTextonImg() );
+				*/
+
+
 				CoOccurences cooccurence(xDst, yDst, coOccurences[c+1]);
-				coOccurencesList.push_back(cooccurence);		
+				coOccurencesList.push_back(cooccurence);	
+
+				if (xDst >= 0 && yDst >= 0)
+					fSides[0] = coOccurencesList.size() - 1;
+				if (xDst <= 0 && yDst <= 0)
+					fSides[1] = coOccurencesList.size() - 1;
+				if (xDst <= 0 && yDst >= 0)
+					fSides[2] = coOccurencesList.size() - 1;
+				if (xDst >= 0 && yDst <= 0)
+					fSides[3] = coOccurencesList.size() - 1;
 			}
 
-			orgT->setCoOccurences(coOccurencesList);
+			//printf("sides=(");
+			for (int i = 0; i < 4; i++){
+				//printf(",%d", fSides[i]);
+				if (fSides[i] == 0){
+					int nChosen;
+					if (i % 2 == 0)
+						nChosen = fSides[i + 1];
+					else
+						nChosen = fSides[i - 1];
+
+					if (nChosen == 0)
+						continue;
+
+					fSides[i] = nChosen;
+					//printf("!", nChosen);
+
+					CoOccurences cooccurence(-coOccurencesList[nChosen].distX
+						, -coOccurencesList[nChosen].distY
+						, coOccurencesList[nChosen].nCluster);
+					coOccurencesList.push_back(cooccurence);	
+				}
+
+			}
+/*
+			printf(")\n");
+
+			printf("new sides=(");
+			for (int i = 0; i < 4; i++)
+				printf(",%d", fSides[i]);
+			printf(")\n\n");
+*/
+			curTexton->setCoOccurences(coOccurencesList);
 			
 		}
 	}
+	//cvWaitKey(0);
 }
 		

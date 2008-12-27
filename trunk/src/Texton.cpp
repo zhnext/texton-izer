@@ -2,7 +2,7 @@
 
 Texton::Texton(IplImage * textonImg, int nCluster, int positionMask, CvScalar& means,SBox& box):
 m_textonImg(textonImg), m_nCluster(nCluster),m_positionMask(positionMask),m_means(means),
-m_box(box)
+m_box(box),m_nDilation(0)
 {
 }
 
@@ -11,4 +11,9 @@ Texton::~Texton(){}
 void Texton::setCoOccurences(vector<CoOccurences> coOccurences)
 {
 	m_coOccurences = coOccurences;
+}
+
+void Texton::setDilationArea(int nDilation)
+{
+	m_nDilation = nDilation;
 }

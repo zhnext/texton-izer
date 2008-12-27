@@ -36,7 +36,7 @@ int main(int argc, char ** argv)
 	sprintf_s(filename, 255,"Original Image");
 	cvNamedWindow( filename, 1 );
 	cvShowImage( filename, pInputImage );
-	cvWaitKey(1000);
+	cvWaitKey(300);
 	//cvDestroyWindow(filename);
 
 	Textonator * textonator = new Textonator(pInputImage, clusters, nMinTextonSize);

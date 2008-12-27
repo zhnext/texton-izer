@@ -20,9 +20,12 @@ private:
 
 	void CopyImageWithoutBorder(IplImage * src,IplImage * dst, int nBorderSize);
 
+	bool checkSurrounding(int x, int y, Texton* t, IplImage* synthesizedImage);
+
 private:
 
 	CvScalar m_textonBgColor;
+	CvScalar m_resultBgColor;
 	int		m_nBorder;
 };
 
