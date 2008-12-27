@@ -54,14 +54,17 @@ public:
 	int				getPosition() const			{ return m_positionMask; }		
 	CvScalar		getMeans() const			{ return m_means; }
 	SBox			getBoundingBox() const		{ return m_box; }
-	vector<CoOccurences>* getCoOccurences()  { return &m_coOccurences; }
+	vector<CoOccurences>* getCoOccurences()		{ return &m_coOccurences; }
+	int				getDilationArea() const		{ return m_nDilation; }
 
 	void			setCoOccurences(vector<CoOccurences> coOccurences);
+	void			setDilationArea(int nDilation);
 
 private:
 	IplImage*	m_textonImg;
 	int			m_nCluster;
 	int			m_positionMask;
+	int			m_nDilation;
 	CvScalar	m_means;
 	SBox		m_box;
 	vector<CoOccurences> m_coOccurences;
