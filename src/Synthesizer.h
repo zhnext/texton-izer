@@ -18,9 +18,15 @@ private:
 
 	void applyCoOccurence(int x, int y, vector<CoOccurences>* co, vector<Cluster> &clusterList, IplImage* synthesizedImage);
 
-	void CopyImageWithoutBorder(IplImage * src,IplImage * dst, int nBorderSize);
+	void copyImageWithoutBorder(IplImage * src,IplImage * dst, int nBorderSize);
+	void copyImageWithoutBackground(IplImage * src,IplImage * dst);
+
 
 	bool checkSurrounding(int x, int y, Texton* t, IplImage* synthesizedImage);
+
+	IplImage * retrieveBackground(vector<Cluster> &clusterList, IplImage * img);
+
+	void removeUnconformingTextons(vector<Cluster> &clusterList);
 
 private:
 
