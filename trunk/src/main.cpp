@@ -12,7 +12,7 @@ int main(int argc, char ** argv)
 	int nCurCluster = 0;
 
 	if (argc < 2 || argc > 5) {
-	  std::cout << "Usage: texturesynth image_file_path [output_path] [cluster_number]" << std::endl;
+	  std::cout << "Usage: texturesynth image_file_path [output_path] [cluster_number] [minimum texton size]" << std::endl;
 	  return (-1);
 	}
 
@@ -41,12 +41,12 @@ int main(int argc, char ** argv)
 
 	Textonator * textonator = new Textonator(pInputImage, clusters, nMinTextonSize);
 	textonator->textonize(clusterList);
-	
+	/*
 	//save the textons
-	/*for (unsigned int i = 0; i < clusterList.size(); i++) {
+	for (unsigned int i = 0; i < clusterList.size(); i++) {
 		Cluster cluster = clusterList[i];
 		for (int j = 0; j < cluster.m_nClusterSize; j++){
-			Texton ** tList = cluster.m_textonList;
+			vector<Texton*> tList = cluster.m_textonList;
 			sprintf_s(filename, 255,"%sCluster_%d_Texton_%d.jpg", strOutPath, tList[j]->getClusterNumber(), j);
 
 	//		if (tList[j]->isBackground())
@@ -62,7 +62,7 @@ int main(int argc, char ** argv)
 
 	DWORD time1 = GetTickCount();
 	Synthesizer synthesizer;
-	IplImage * result = synthesizer.synthesize(300, 300, pInputImage->depth, pInputImage->nChannels, clusterList);
+	IplImage * result = synthesizer.synthesize(400, 293, pInputImage->depth, pInputImage->nChannels, clusterList);
 	DWORD time2 = GetTickCount();
 
 	printf("diff time = %ld\n", time2 - time1);

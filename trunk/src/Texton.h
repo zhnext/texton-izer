@@ -60,6 +60,8 @@ public:
 	void			setCoOccurences(vector<CoOccurences> coOccurences);
 	void			setDilationArea(int nDilation);
 
+	bool			operator<(const Texton& right);
+
 private:
 	IplImage*	m_textonImg;
 	int			m_nCluster;
@@ -68,6 +70,8 @@ private:
 	CvScalar	m_means;
 	SBox		m_box;
 	vector<CoOccurences> m_coOccurences;
+
+	int			m_nAppereances;
 };
 
 
