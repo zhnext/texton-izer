@@ -60,7 +60,9 @@ public:
 	void			setCoOccurences(vector<CoOccurences> coOccurences);
 	void			setDilationArea(int nDilation);
 
-	bool			operator<(const Texton& right);
+	void			addAppereance();
+
+	bool			operator<(const Texton& right) const;
 
 private:
 	IplImage*	m_textonImg;

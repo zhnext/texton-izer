@@ -245,7 +245,7 @@ void Textonator::retrieveTextons(int nClusterSize, int nCluster, int * pTextonMa
 	bc = 0;
 	cc = 0;
 	int nCurTexton = FIRST_TEXTON_NUM;
-	vector<Texton*> curTextonList;
+	list<Texton*> curTextonList;
 
 	//create the new cluster
 	Cluster cluster;
@@ -365,8 +365,8 @@ void Textonator::retrieveTextons(int nClusterSize, int nCluster, int * pTextonMa
 	cc /= nClusterSize;
 	//printf("total average (%lf,%lf,%lf)\n", ac, bc, cc);
 	int nErrs = 0;
-	for (int nCurTexton = 0; nCurTexton < nClusterSize; nCurTexton++) {
-		CvScalar tMeans = clusterList[nCluster].m_textonList[nCurTexton]->getMeans();
+	for (list<Texton*>::iterator iter = clusterList[nCluster].m_textonList.begin(); iter != clusterList[nCluster].m_textonList.end(); iter++){
+		CvScalar tMeans = (*iter)->getMeans();
 		//printf("\nRelative Texton Color mean = (%lf, %lf, %lf)\n", ac - tMeans.val[0], bc - tMeans.val[1],cc - tMeans.val[2]);
 		double relativeErr = ( (ac - tMeans.val[0])*(ac - tMeans.val[0])
 			+ (bc - tMeans.val[1]) * (bc - tMeans.val[1]) + (cc - tMeans.val[2]) * (cc - tMeans.val[2]) )/nClusterSize;
@@ -617,8 +617,10 @@ void Textonator::computeCoOccurences(vector<int*> pTextonMapList, vector<Cluster
 		if (clusterList[nCluster].isImageFilling())
 			continue;
 
-		for (int nCurTexton = 0; nCurTexton < clusterList[nCluster].m_nClusterSize; nCurTexton++, nOffsetCurTexton++){
-			Texton * curTexton = clusterList[nCluster].m_textonList[nCurTexton];
+		for (list<Texton*>::iterator iter = clusterList[nCluster].m_textonList.begin(); iter != clusterList[nCluster].m_textonList.end(); iter++, nOffsetCurTexton++){
+
+//		for (int nCurTexton = 0; nCurTexton < clusterList[nCluster].m_nClusterSize; nCurTexton++, nOffsetCurTexton++){
+			Texton * curTexton = *iter; //clusterList[nCluster].m_textonList[nCurTexton];
 			//"Replenish" the original image
 			memcpy(pData, (uchar *)m_pImg->imageData, m_pImg->imageSize);
 
@@ -641,11 +643,11 @@ void Textonator::computeCoOccurences(vector<int*> pTextonMapList, vector<Cluster
 /*
 			char filename[255];
 			cvNamedWindow( filename, 1 );
-			cvShowImage( filename, m_pOutImg );
+			cvShowImage( filename, (*iter)->getTextonImg() );
 			cvWaitKey(0);
 			cvDestroyWindow(filename);
 */
-			printf("Texton num = %d\n", nCurTexton);
+			//printf("Texton num = %d\n", nCurTexton);
 
 			//FIXME: should decide how many dilation should there be
 			int nDilation = 0;
@@ -686,7 +688,7 @@ void Textonator::computeCoOccurences(vector<int*> pTextonMapList, vector<Cluster
 													//from the moment we occur another texton, we will dilate 20 times (for now)
 													nMaxDilations = nDilation + 20;
 
-													//printf("(%d) nDilation=%d\n", nCurTexton, nDilation + 1);
+													printf("nDilation=%d\n", nDilation + 1);
 												}
 
 												coOccurences.push_back(pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i]);
@@ -719,7 +721,12 @@ void Textonator::computeCoOccurences(vector<int*> pTextonMapList, vector<Cluster
 
 			for (unsigned int c = 0; c < coOccurences.size(); c+=2) {
 
-				Texton *t = clusterList[coOccurences[c+1]].m_textonList[coOccurences[c] - FIRST_TEXTON_NUM];
+				list<Texton*>::iterator iter = clusterList[coOccurences[c+1]].m_textonList.begin(); 
+				for (int i = 0; i < coOccurences[c] - FIRST_TEXTON_NUM; i++)
+					iter++;
+
+				Texton * t = *(iter);
+				//Texton *t = clusterList[coOccurences[c+1]].m_textonList[coOccurences[c] - FIRST_TEXTON_NUM];
 				if (t->getPosition() != Texton::NO_BORDER) {
 					//printf("a side cluster. avoid for now...\n");
 					continue;
@@ -784,6 +791,5 @@ void Textonator::computeCoOccurences(vector<int*> pTextonMapList, vector<Cluster
 			
 		}
 	}
-	//cvWaitKey(0);
 }
 		
