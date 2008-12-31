@@ -1,8 +1,8 @@
 #ifndef __H_CLUSTER_H__
 #define __H_CLUSTER_H__
 
-#include <vector>
-using std::vector;
+#include <list>
+using std::list;
 
 #include "Texton.h"
 
@@ -19,7 +19,7 @@ public:
 
 public:
 	
-	vector<Texton*>	m_textonList;
+	list<Texton*>	m_textonList;
 	int			m_nClusterSize;
 	bool		m_fBackground;
 	bool		m_fImageFilling;

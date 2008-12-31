@@ -133,23 +133,27 @@ void Synthesizer::removeUnconformingTextons(vector<Cluster> &clusterList)
 	for (unsigned int i = 0; i < clusterList.size(); i++) {
 		Cluster& cluster = clusterList[i];
 		nDilationAvg = 0.0;
-		for (int j = 0; j < cluster.m_nClusterSize; j++){
+		for (list<Texton*>::iterator iter = cluster.m_textonList.begin(); iter != cluster.m_textonList.end(); iter++){
+			printf("getDilationArea()=%d\n",(*iter)->getDilationArea());
+			nDilationAvg += (*iter)->getDilationArea();
+		}
+		/*for (int j = 0; j < cluster.m_nClusterSize; j++){
 			printf("cluster.m_textonList[%d]->getDilationArea()=%d\n",j,cluster.m_textonList[j]->getDilationArea());
 			nDilationAvg += cluster.m_textonList[j]->getDilationArea();
-		}
+		}*/
 		nDilationAvg = nDilationAvg / cluster.m_nClusterSize;
 
 		printf("nDilationAvg=%lf\n", nDilationAvg);
 		if (nDilationAvg > 2){
 			//remove all the "too-close" textons from the list
-			int n = 0;
-			while (n < cluster.m_nClusterSize){
-				if (cluster.m_textonList[n]->getDilationArea() < 2){
-					cluster.m_textonList.erase(cluster.m_textonList.begin() + n);
+			list<Texton*>::iterator iter = cluster.m_textonList.begin();
+			while (iter != cluster.m_textonList.end()){
+				if ((*iter)->getDilationArea() < 2){
+					iter = cluster.m_textonList.erase(iter);
 					cluster.m_nClusterSize--;
 				}
 				else
-					n++;
+					iter++;
 			}
 		}
 	}
@@ -158,7 +162,7 @@ void Synthesizer::removeUnconformingTextons(vector<Cluster> &clusterList)
 IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList, IplImage * img)
 {
 	int nBackgroundCluster = -1;
-	for (int i = 0; i < clusterList.size(); i++) {
+	for (unsigned int i = 0; i < clusterList.size(); i++) {
 		if (clusterList[i].isImageFilling())
 			nBackgroundCluster = i;
 	}
@@ -220,17 +224,21 @@ IplImage* Synthesizer::synthesize(int nNewWidth, int nNewHeight, int depth, int 
 		return tempSynthesizedImage;
 	}
 
+	list<Texton*>::iterator beg = clusterList[nFirstCluster].m_textonList.begin();
+	list<Texton*>::iterator iter = beg;
 	int nFirstTexton;
 	do
 	{
 		nFirstTexton = rand()%clusterList[nFirstCluster].m_nClusterSize;
-	} while (clusterList[nFirstCluster].m_textonList[nFirstTexton]->getPosition() != Texton::NO_BORDER || clusterList[nFirstCluster].m_textonList[nFirstTexton]->getDilationArea() == 0);
+		for (int i = 0; i < nFirstTexton; i++)
+			iter++;
+	} while ((*iter)->getPosition() != Texton::NO_BORDER || (*iter)->getDilationArea() == 0);
 
 	int x = nNewWidth / 8;
 	int y = nNewHeight / 8;
 
-	insertTexton(x, y, clusterList[nFirstCluster].m_textonList[nFirstTexton]->getTextonImg(), tempSynthesizedImage);
-	vector<CoOccurences>* co = clusterList[nFirstCluster].m_textonList[nFirstTexton]->getCoOccurences();
+	insertTexton(x, y, (*iter)->getTextonImg(), tempSynthesizedImage);
+	vector<CoOccurences>* co = (*iter)->getCoOccurences();
 	applyCoOccurence(x, y, co, clusterList, tempSynthesizedImage);
 
 	IplImage * synthesizedImage = cvCreateImage(cvSize(nNewWidth,nNewHeight), depth, nChannels);
@@ -272,6 +280,11 @@ bool Synthesizer::checkSurrounding(int x, int y, Texton* t, IplImage* synthesize
 	return true;
 }
 
+bool SortTextonsPredicate(Texton*& lhs, Texton*& rhs)
+{
+	return (*lhs) < (*rhs);
+}
+
 void Synthesizer::applyCoOccurence(int X, int Y, vector<CoOccurences>* pco, vector<Cluster> &clusterList, IplImage * synthesizedImage)
 {
 	list<CoOccurenceQueueItem> coQueue;
@@ -279,10 +292,7 @@ void Synthesizer::applyCoOccurence(int X, int Y, vector<CoOccurences>* pco, vect
 	CoOccurenceQueueItem item(X,Y,pco);
 	coQueue.push_back(item);
 
-	int * curClusterTexton = new int[clusterList.size()];
-	for (int i = 0; i < clusterList.size(); i++)
-		curClusterTexton[i] = rand() % clusterList[i].m_nClusterSize;
-
+	//go through all the textons co-occurences and build the image with them
 	while (coQueue.size() > 0) {
 		CoOccurenceQueueItem curItem = coQueue.front();
 		printf("size=%d\n",coQueue.size());
@@ -298,11 +308,7 @@ void Synthesizer::applyCoOccurence(int X, int Y, vector<CoOccurences>* pco, vect
 			int nNewX = curX + co[ico].distX;
 			int nNewY = curY + co[ico].distY;
 
-			int nTexton;
 			bool fNoInsert = false;
-
-			//if (co[ico].nCluster == 1)
-			//	continue;
 
 			//if (curCluster.isBackground()){
 			//	printf("background. returning...\n");
@@ -312,61 +318,48 @@ void Synthesizer::applyCoOccurence(int X, int Y, vector<CoOccurences>* pco, vect
 			if (nNewX < 0 || nNewY < 0 || nNewX >= synthesizedImage->width || nNewY >= synthesizedImage->height)
 				continue;
 			
-			do {
-				nTexton = rand() % curCluster.m_nClusterSize;
-			} while ((curCluster.m_textonList[nTexton]->getPosition() != Texton::NO_BORDER) || curCluster.m_textonList[nTexton]->getDilationArea() == 0);
-
-			//in order to avoid patterns, we will start from a random texton
-			int nTempTexton = curClusterTexton[co[ico].nCluster];
-			int nTimes = 0;
-			while (!checkSurrounding(nNewX, nNewY,curCluster.m_textonList[nTexton],synthesizedImage) || !insertTexton(nNewX, nNewY, curCluster.m_textonList[nTexton]->getTextonImg(), synthesizedImage))
+			Texton * texton = *(curCluster.m_textonList.begin());
+			list<Texton*>::iterator iter = curCluster.m_textonList.begin();
+			
+			//try to insert a texton while maintaining an adequete surroundings
+			while (!checkSurrounding(nNewX, nNewY,texton,synthesizedImage) 
+				|| !insertTexton(nNewX, nNewY, texton->getTextonImg(), synthesizedImage))
 			{
-				while (curCluster.m_textonList[nTempTexton]->getPosition() != Texton::NO_BORDER || curCluster.m_textonList[nTempTexton]->getDilationArea() == 0){
-					nTempTexton++;
-					nTimes++;
-					if (nTempTexton >= curCluster.m_nClusterSize)
-						nTempTexton = 0;
-					if (nTimes >= curCluster.m_nClusterSize)
+				iter++;
+				while (iter != curCluster.m_textonList.end()){
+					//find a suitable texton
+					if ((*iter)->getPosition() == Texton::NO_BORDER)
 						break;
+					else
+						iter++;
 				}
 
-				nTexton = nTempTexton;
-				nTempTexton++;
-				nTimes++;
-				if (nTempTexton >= curCluster.m_nClusterSize)
-					nTempTexton = 0;
-				if (nTimes >= curCluster.m_nClusterSize){
+				if (iter == curCluster.m_textonList.end()){
 					fNoInsert = true;
 					break;
 				}
+				else
+					texton = *iter;
 			}
 
-			//save the texton that we currently are in, in order to try and avoid using it immediatly
-			curClusterTexton[co[ico].nCluster] = nTempTexton;
-
 			if (!fNoInsert){
-
+				
 /*				char filename[255];
 				sprintf_s(filename, 255,"Result.jpg");
 				cvNamedWindow( filename, 1 );
 				cvShowImage( filename, synthesizedImage );
-				//cvSaveImage(filename,result);
 				cvWaitKey(0);
 				cvDestroyWindow(filename);
 */
-				//printf("inserted...\n");
 
-				vector<CoOccurences>* coo = curCluster.m_textonList[nTexton]->getCoOccurences();
+				vector<CoOccurences>* coo = texton->getCoOccurences();
 				CoOccurenceQueueItem newItem(nNewX, nNewY, coo);
 				coQueue.push_back(newItem);
-			}
-			else{
-				//printf("didn't insert...\n");
+				
+				//update the texton appearance and sort the texton list accordingly
+				texton->addAppereance();
+				clusterList[co[ico].nCluster].m_textonList.sort(SortTextonsPredicate);
 			}
 		}
-
-
 	}
-
-	delete [] curClusterTexton;
 }

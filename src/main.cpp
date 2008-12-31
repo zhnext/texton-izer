@@ -22,7 +22,7 @@ int main(int argc, char ** argv)
 	  return (-1);
 	}
 
-	int nMinTextonSize = 50;
+	int nMinTextonSize = 20;
 	int clusters = 2;
 	char *strOutPath = "";
 	if (argc > 2)

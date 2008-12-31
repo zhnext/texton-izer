@@ -18,7 +18,12 @@ void Texton::setDilationArea(int nDilation)
 	m_nDilation = nDilation;
 }
 
-bool Texton::operator<(const Texton& right)
+bool Texton::operator<(const Texton& right) const
 {
 	return (m_nAppereances < right.m_nAppereances);
+}
+
+void Texton::addAppereance()
+{
+	m_nAppereances++;
 }
