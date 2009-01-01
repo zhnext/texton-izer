@@ -22,7 +22,7 @@ int main(int argc, char ** argv)
 	  return (-1);
 	}
 
-	int nMinTextonSize = 20;
+	int nMinTextonSize = 30;
 	int clusters = 2;
 	char *strOutPath = "";
 	if (argc > 2)
@@ -60,12 +60,13 @@ int main(int argc, char ** argv)
 		}
 	}*/
 
+	time_t t1 = time(NULL);
 	DWORD time1 = GetTickCount();
 	Synthesizer synthesizer;
 	IplImage * result = synthesizer.synthesize(400, 293, pInputImage->depth, pInputImage->nChannels, clusterList);
 	DWORD time2 = GetTickCount();
-
-	printf("diff time = %ld\n", time2 - time1);
+	time_t t2 = time(NULL);
+	printf("diff time = %ld, %d seconds\n", time2 - time1, t2 - t1);
 
 	sprintf_s(filename, 255,"Stones_Result.jpg");
 	cvNamedWindow( filename, 1 );

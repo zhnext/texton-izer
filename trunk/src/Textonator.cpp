@@ -688,7 +688,7 @@ void Textonator::computeCoOccurences(vector<int*> pTextonMapList, vector<Cluster
 													//from the moment we occur another texton, we will dilate 20 times (for now)
 													nMaxDilations = nDilation + 20;
 
-													printf("nDilation=%d\n", nDilation + 1);
+													//printf("nDilation=%d\n", nDilation + 1);
 												}
 
 												coOccurences.push_back(pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i]);

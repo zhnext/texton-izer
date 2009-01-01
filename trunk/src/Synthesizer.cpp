@@ -232,8 +232,9 @@ IplImage* Synthesizer::synthesize(int nNewWidth, int nNewHeight, int depth, int 
 		nFirstTexton = rand()%clusterList[nFirstCluster].m_nClusterSize;
 		for (int i = 0; i < nFirstTexton; i++)
 			iter++;
-	} while ((*iter)->getPosition() != Texton::NO_BORDER || (*iter)->getDilationArea() == 0);
+	} while ((*iter)->getPosition() != Texton::NO_BORDER);
 
+	//Put the first texton in a place close to the the image sides, in order to allow better texton expanding
 	int x = nNewWidth / 8;
 	int y = nNewHeight / 8;
 
