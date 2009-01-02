@@ -46,17 +46,20 @@ int main(int argc, char ** argv)
 	for (unsigned int i = 0; i < clusterList.size(); i++) {
 		Cluster cluster = clusterList[i];
 		for (int j = 0; j < cluster.m_nClusterSize; j++){
-			vector<Texton*> tList = cluster.m_textonList;
-			sprintf_s(filename, 255,"%sCluster_%d_Texton_%d.jpg", strOutPath, tList[j]->getClusterNumber(), j);
+			list<Texton*> tList = cluster.m_textonList;
+			for (list<Texton*>::iterator iter = tList.begin(); iter != tList.end(); iter++) {
+				sprintf_s(filename, 255,"%sCluster_%d_Texton_%d.jpg", strOutPath, (*iter)->getClusterNumber(), j);
 
-	//		if (tList[j]->isBackground())
-	//			printf("Background texton\n");
+				//		if (tList[j]->isBackground())
+				//			printf("Background texton\n");
 
-			cvNamedWindow( filename, 1 );
-			cvShowImage( filename, tList[j]->getTextonImg() );
-			cvWaitKey(0);
-			cvDestroyWindow(filename);
-			//cvSaveImage(filename,t->getTextonImg());
+				cvNamedWindow( filename, 1 );
+				cvShowImage( filename, (*iter)->getTextonImg() );
+				cvWaitKey(0);
+				cvDestroyWindow(filename);
+				//cvSaveImage(filename,t->getTextonImg());
+
+			}
 		}
 	}*/
 

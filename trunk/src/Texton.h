@@ -56,7 +56,9 @@ public:
 	SBox			getBoundingBox() const		{ return m_box; }
 	vector<CoOccurences>* getCoOccurences()		{ return &m_coOccurences; }
 	int				getDilationArea() const		{ return m_nDilation; }
+	bool			isImageFilling() const		{ return m_fImageFilling; }
 
+	void			setImageFilling();
 	void			setCoOccurences(vector<CoOccurences> coOccurences);
 	void			setDilationArea(int nDilation);
 
@@ -65,6 +67,7 @@ public:
 	bool			operator<(const Texton& right) const;
 
 private:
+	bool		m_fImageFilling;
 	IplImage*	m_textonImg;
 	int			m_nCluster;
 	int			m_positionMask;
