@@ -2,7 +2,7 @@
 
 Texton::Texton(IplImage * textonImg, int nCluster, int positionMask, CvScalar& means,SBox& box):
 m_textonImg(textonImg), m_nCluster(nCluster),m_positionMask(positionMask),m_means(means),
-m_box(box),m_nDilation(0),m_nAppereances(0)
+m_box(box),m_nDilation(0),m_nAppereances(0),m_fImageFilling(false)
 {
 }
 
@@ -26,4 +26,9 @@ bool Texton::operator<(const Texton& right) const
 void Texton::addAppereance()
 {
 	m_nAppereances++;
+}
+
+void Texton::setImageFilling()
+{
+	m_fImageFilling = true;
 }

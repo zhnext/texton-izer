@@ -300,18 +300,6 @@ void Textonator::retrieveTextons(int nClusterSize, int nCluster, int * pTextonMa
 		int ySize = (maxY - minY == 0) ? 1 : maxY - minY;
 
 
-		//printf("xSize=%d, ySize=%d, m_pImg->width=%d, m_pImg->height=%d\n",xSize, ySize, m_pImg->width, m_pImg->height);
-		if (xSize >= m_pImg->width - 1 && ySize >= m_pImg->height - 1)
-			cluster.setImageFilling();
-
-		////
-		////
-		//BEWARE: HEURISTCS
-		////
-		////
-		if (xSize >= m_pImg->width - 10 || ySize >= m_pImg->height - 10)
-			cluster.setImageFilling();
-
 		IplImage* pTexton = cvCreateImage(cvSize(xSize,ySize), 
 											m_pImg->depth,
 											m_pImg->nChannels);
@@ -329,6 +317,17 @@ void Textonator::retrieveTextons(int nClusterSize, int nCluster, int * pTextonMa
 			positionMask |= Texton::BOTTOM_BORDER;
 
 		Texton* t = new Texton(pTexton, nCluster, positionMask, textonMeans, boundingBox);
+
+		////
+		////
+		//BEWARE: HEURISTCS
+		////
+		////
+		if (xSize >= m_pImg->width - 10 || ySize >= m_pImg->height - 10){
+			cluster.setImageFilling();
+			t->setImageFilling();
+		}
+
 		curTextonList.push_back(t);
 
 /*
@@ -613,14 +612,14 @@ void Textonator::computeCoOccurences(vector<int*> pTextonMapList, vector<Cluster
 	for (unsigned int nCluster = 0; nCluster < pTextonMapList.size(); nCluster++) {
 		int nOffsetCurTexton = FIRST_TEXTON_NUM;
 
-		//this cluster is probably background as it fills the whole image and cannot really be used
-		if (clusterList[nCluster].isImageFilling())
-			continue;
-
 		for (list<Texton*>::iterator iter = clusterList[nCluster].m_textonList.begin(); iter != clusterList[nCluster].m_textonList.end(); iter++, nOffsetCurTexton++){
 
-//		for (int nCurTexton = 0; nCurTexton < clusterList[nCluster].m_nClusterSize; nCurTexton++, nOffsetCurTexton++){
 			Texton * curTexton = *iter; //clusterList[nCluster].m_textonList[nCurTexton];
+
+			//this texton is probably background as it fills the whole image and cannot really be used
+			if (curTexton->isImageFilling())
+				continue;
+
 			//"Replenish" the original image
 			memcpy(pData, (uchar *)m_pImg->imageData, m_pImg->imageSize);
 
@@ -664,9 +663,12 @@ void Textonator::computeCoOccurences(vector<int*> pTextonMapList, vector<Cluster
 
 								//search through the clusters for overlapping textons
 								for (int nCurrentCluster = 0; nCurrentCluster < m_nClusters; nCurrentCluster++){
+									
+									/*
 									//this cluster is probably background as it fills the whole image and cannot really be used
 									if (clusterList[nCurrentCluster].isImageFilling())
 										continue;
+									*/
 
 									if (pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i] < FIRST_TEXTON_NUM)
 										continue;
@@ -731,6 +733,10 @@ void Textonator::computeCoOccurences(vector<int*> pTextonMapList, vector<Cluster
 					//printf("a side cluster. avoid for now...\n");
 					continue;
 				}
+
+				//if the texton is filling the whole image, then he cannot be trusted as neighbor
+				if (t->isImageFilling())
+					continue;
 
 				SBox orgBox = curTexton->getBoundingBox();
 				SBox box = t->getBoundingBox();

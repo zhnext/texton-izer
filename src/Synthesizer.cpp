@@ -167,35 +167,38 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList, IplImag
 			nBackgroundCluster = i;
 	}
 
-	if (nBackgroundCluster >= 0){
-		IplImage * backgroundImage = cvCreateImage(cvSize(img->width,img->height), img->depth, img->nChannels);
-		Texton * t = clusterList[nBackgroundCluster].m_textonList.front();
-		const IplImage * textonImage = t->getTextonImg();
+	Texton * t = NULL;
+	if (nBackgroundCluster >= 0)
+		t = clusterList[nBackgroundCluster].m_textonList.front();
+	else
+		//random cluster
+		t = clusterList[0].m_textonList.front();
 
-		int textonStep = textonImage->widthStep;
-		uchar * pTextonData  = reinterpret_cast<uchar *>(textonImage->imageData);
+	IplImage * backgroundImage = cvCreateImage(cvSize(img->width,img->height), img->depth, img->nChannels);
+	const IplImage * textonImage = t->getTextonImg();
 
-		CvScalar newColor;
-		for (int i = 0; i < textonImage->width; i++){
-			for (int j = 0; j < textonImage->height; j++) {
-				if (pTextonData[j*textonStep+i*3+0] == m_textonBgColor.val[0] &&
-					pTextonData[j*textonStep+i*3+1] == m_textonBgColor.val[1] &&
-					pTextonData[j*textonStep+i*3+2] == m_textonBgColor.val[2])
-					continue;
-				else {
-					newColor.val[0] = pTextonData[j*textonStep+i*3+0];
-					newColor.val[1] = pTextonData[j*textonStep+i*3+1];
-					newColor.val[2] = pTextonData[j*textonStep+i*3+2];
-				}
+	int textonStep = textonImage->widthStep;
+	uchar * pTextonData  = reinterpret_cast<uchar *>(textonImage->imageData);
+
+	CvScalar newColor;
+	for (int i = 0; i < textonImage->width; i++){
+		for (int j = 0; j < textonImage->height; j++) {
+			if (pTextonData[j*textonStep+i*3+0] == m_textonBgColor.val[0] &&
+				pTextonData[j*textonStep+i*3+1] == m_textonBgColor.val[1] &&
+				pTextonData[j*textonStep+i*3+2] == m_textonBgColor.val[2])
+				continue;
+			else {
+				newColor.val[0] = pTextonData[j*textonStep+i*3+0];
+				newColor.val[1] = pTextonData[j*textonStep+i*3+1];
+				newColor.val[2] = pTextonData[j*textonStep+i*3+2];
+				break;
 			}
 		}
-
-		cvSet( backgroundImage, newColor);
-
-		return backgroundImage;
 	}
 
-	return NULL;
+	cvSet( backgroundImage, newColor);
+
+	return backgroundImage;
 }
 
 IplImage* Synthesizer::synthesize(int nNewWidth, int nNewHeight, int depth, int nChannels, vector<Cluster> &clusterList)
@@ -245,12 +248,12 @@ IplImage* Synthesizer::synthesize(int nNewWidth, int nNewHeight, int depth, int 
 	IplImage * synthesizedImage = cvCreateImage(cvSize(nNewWidth,nNewHeight), depth, nChannels);
 	cvSet( synthesizedImage, m_resultBgColor);
 
-	if (backgroundImage != NULL){
+	//if (backgroundImage != NULL){
 		copyImageWithoutBackground(tempSynthesizedImage, backgroundImage);
 		copyImageWithoutBorder(backgroundImage, synthesizedImage, m_nBorder/2);
-	}
-	else
-		copyImageWithoutBorder(tempSynthesizedImage, synthesizedImage, m_nBorder/2);
+	//}
+	//else
+	//	copyImageWithoutBorder(tempSynthesizedImage, synthesizedImage, m_nBorder/2);
 	
 	return synthesizedImage;
 	
