@@ -688,7 +688,7 @@ void Textonator::computeCoOccurences(vector<int*> pTextonMapList, vector<Cluster
 												if (coOccurences.size() == 0){
 													curTexton->setDilationArea(nDilation + 1);
 													//from the moment we occur another texton, we will dilate 20 times (for now)
-													nMaxDilations = nDilation + 20;
+													nMaxDilations = nDilation + 10;
 
 													//printf("nDilation=%d\n", nDilation + 1);
 												}
