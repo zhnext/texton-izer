@@ -50,8 +50,8 @@ int main(int argc, char ** argv)
 			for (list<Texton*>::iterator iter = tList.begin(); iter != tList.end(); iter++) {
 				sprintf_s(filename, 255,"%sCluster_%d_Texton_%d.jpg", strOutPath, (*iter)->getClusterNumber(), j);
 
-				//		if (tList[j]->isBackground())
-				//			printf("Background texton\n");
+
+				printf("texton position = %d\n", (*iter)->getPosition());
 
 				cvNamedWindow( filename, 1 );
 				cvShowImage( filename, (*iter)->getTextonImg() );

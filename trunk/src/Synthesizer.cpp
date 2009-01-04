@@ -149,6 +149,7 @@ void Synthesizer::removeUnconformingTextons(vector<Cluster> &clusterList)
 			list<Texton*>::iterator iter = cluster.m_textonList.begin();
 			while (iter != cluster.m_textonList.end()){
 				if ((*iter)->getDilationArea() < 2){
+					printf("erased!");
 					iter = cluster.m_textonList.erase(iter);
 					cluster.m_nClusterSize--;
 				}
@@ -209,33 +210,40 @@ IplImage* Synthesizer::synthesize(int nNewWidth, int nNewHeight, int depth, int 
 	IplImage * tempSynthesizedImage = cvCreateImage(cvSize(nNewWidth + m_nBorder,nNewHeight + m_nBorder), depth, nChannels);
 	cvSet( tempSynthesizedImage, m_resultBgColor);
 
-	//check if background can be retrieved from the textons (using an image filling texton)
+	//Retrieve background from the textons (by using an image filling texton or a random texton)
 	IplImage *backgroundImage = retrieveBackground(clusterList, tempSynthesizedImage);
 
-	//remove all textons that are "too-close" according to the dilation average
+	//Remove all textons that are "too-close" according to the dilation average
 	removeUnconformingTextons(clusterList);
-
 
 	//choose the first texton to put in the image randomly
 	unsigned int nFirstCluster = 0;
-	//ADDME:
-	while (nFirstCluster < clusterList.size() && (clusterList[nFirstCluster].isImageFilling()))// || clusterList[nFirstCluster].isBackground()))
-		nFirstCluster++;
+	list<Texton*>::iterator iter;
 
-	if (nFirstCluster >= clusterList.size()){
-		printf("Unable to synthesize image!\n");
-		return tempSynthesizedImage;
+	while (nFirstCluster < clusterList.size()){
+		//while (nFirstCluster < clusterList.size() && (clusterList[nFirstCluster].isImageFilling()))// || clusterList[nFirstCluster].isBackground()))	
+
+		if (nFirstCluster >= clusterList.size()){
+			printf("Unable to synthesize image!\n");
+			return tempSynthesizedImage;
+		}
+
+		int nFirstTexton;
+		do
+		{
+			iter = clusterList[nFirstCluster].m_textonList.begin();
+			nFirstTexton = rand()%clusterList[nFirstCluster].m_nClusterSize;
+			for (int i = 0; i < nFirstTexton; i++){
+				iter++;
+			}
+		} while ((*iter)->getPosition() != Texton::NO_BORDER || (*iter)->isImageFilling() );
+
+		if (iter != clusterList[nFirstCluster].m_textonList.end())
+			break;
+
+		nFirstCluster++;
 	}
 
-	list<Texton*>::iterator beg = clusterList[nFirstCluster].m_textonList.begin();
-	list<Texton*>::iterator iter = beg;
-	int nFirstTexton;
-	do
-	{
-		nFirstTexton = rand()%clusterList[nFirstCluster].m_nClusterSize;
-		for (int i = 0; i < nFirstTexton; i++)
-			iter++;
-	} while ((*iter)->getPosition() != Texton::NO_BORDER);
 
 	//Put the first texton in a place close to the the image sides, in order to allow better texton expanding
 	int x = nNewWidth / 8;
@@ -248,13 +256,9 @@ IplImage* Synthesizer::synthesize(int nNewWidth, int nNewHeight, int depth, int 
 	IplImage * synthesizedImage = cvCreateImage(cvSize(nNewWidth,nNewHeight), depth, nChannels);
 	cvSet( synthesizedImage, m_resultBgColor);
 
-	//if (backgroundImage != NULL){
-		copyImageWithoutBackground(tempSynthesizedImage, backgroundImage);
-		copyImageWithoutBorder(backgroundImage, synthesizedImage, m_nBorder/2);
-	//}
-	//else
-	//	copyImageWithoutBorder(tempSynthesizedImage, synthesizedImage, m_nBorder/2);
-	
+	copyImageWithoutBackground(tempSynthesizedImage, backgroundImage);
+	copyImageWithoutBorder(backgroundImage, synthesizedImage, m_nBorder/2);
+
 	return synthesizedImage;
 	
 }
@@ -263,8 +267,7 @@ bool Synthesizer::checkSurrounding(int x, int y, Texton* t, IplImage* synthesize
 {
 	int nArea = t->getDilationArea();
 
-	//printf("nArea=%d\n", nArea);
-	//deal with close textons 
+	//Close textons make it possible to assume safe surrounding
 	if (nArea < 2)
 		return true;
 
@@ -312,7 +315,10 @@ void Synthesizer::applyCoOccurence(int X, int Y, vector<CoOccurences>* pco, vect
 			int nNewX = curX + co[ico].distX;
 			int nNewY = curY + co[ico].distY;
 
-			bool fNoInsert = false;
+			bool fInsert = true;
+
+			Texton * texton;
+			list<Texton*>::iterator iter = curCluster.m_textonList.begin();
 
 			//if (curCluster.isBackground()){
 			//	printf("background. returning...\n");
@@ -321,15 +327,10 @@ void Synthesizer::applyCoOccurence(int X, int Y, vector<CoOccurences>* pco, vect
 
 			if (nNewX < 0 || nNewY < 0 || nNewX >= synthesizedImage->width || nNewY >= synthesizedImage->height)
 				continue;
-			
-			Texton * texton = *(curCluster.m_textonList.begin());
-			list<Texton*>::iterator iter = curCluster.m_textonList.begin();
-			
-			//try to insert a texton while maintaining an adequete surroundings
-			while (!checkSurrounding(nNewX, nNewY,texton,synthesizedImage) 
-				|| !insertTexton(nNewX, nNewY, texton->getTextonImg(), synthesizedImage))
+
+			//try to insert a texton while maintaining an adequate surroundings
+			do
 			{
-				iter++;
 				while (iter != curCluster.m_textonList.end()){
 					//find a suitable texton
 					if ((*iter)->getPosition() == Texton::NO_BORDER)
@@ -339,23 +340,19 @@ void Synthesizer::applyCoOccurence(int X, int Y, vector<CoOccurences>* pco, vect
 				}
 
 				if (iter == curCluster.m_textonList.end()){
-					fNoInsert = true;
+					fInsert = false;
 					break;
 				}
 				else
 					texton = *iter;
+
+				iter++;
 			}
+			while (!checkSurrounding(nNewX, nNewY,texton,synthesizedImage) 
+				|| !insertTexton(nNewX, nNewY, texton->getTextonImg(), synthesizedImage));
 
-			if (!fNoInsert){
-				
-/*				char filename[255];
-				sprintf_s(filename, 255,"Result.jpg");
-				cvNamedWindow( filename, 1 );
-				cvShowImage( filename, synthesizedImage );
-				cvWaitKey(0);
-				cvDestroyWindow(filename);
-*/
-
+			if (fInsert){
+				//update the inserted texton's co occurence list
 				vector<CoOccurences>* coo = texton->getCoOccurences();
 				CoOccurenceQueueItem newItem(nNewX, nNewY, coo);
 				coQueue.push_back(newItem);
