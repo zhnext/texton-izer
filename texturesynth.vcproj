@@ -224,6 +224,10 @@
 			>
 		</File>
 		<File
+			RelativePath=".\src\defs.h"
+			>
+		</File>
+		<File
 			RelativePath=".\src\Synthesizer.cpp"
 			>
 		</File>
