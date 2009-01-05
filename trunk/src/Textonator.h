@@ -69,4 +69,15 @@ private:
 	
 };
 
+class Occurence
+{
+public:
+	Occurence(int nDistance, int nTexton, int nCluster)
+		:m_nDistance(nDistance),m_nTexton(nTexton),m_nCluster(nCluster) {}
+
+	int m_nDistance;
+	int m_nTexton;
+	int m_nCluster;
+};
+
 #endif	//_H_SEGMENTATOR_H_

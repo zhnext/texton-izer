@@ -1,16 +1,12 @@
 #include "Synthesizer.h"
+#include "defs.h"
+
 #include <cv.h>
 #include <time.h>
-#include <list>
-using std::list;
 
-int g_zeroCount = 0;
-int g_count = 0;
 Synthesizer::Synthesizer()
 {
-	//ICK!
-	m_textonBgColor = cvScalar(200, 0, 0);
-
+	m_textonBgColor = BG_COLOR;
 	m_resultBgColor = cvScalarAll(5);
 
 	m_nBorder = 50;
@@ -18,9 +14,7 @@ Synthesizer::Synthesizer()
 }
 
 Synthesizer::~Synthesizer()
-{
-
-}
+{}
 
 bool Synthesizer::insertTexton(int x, int y, const IplImage * textonImg, IplImage* synthesizedImage)
 {
@@ -30,13 +24,9 @@ bool Synthesizer::insertTexton(int x, int y, const IplImage * textonImg, IplImag
 	uchar * pTextonData  = reinterpret_cast<uchar *>(textonImg->imageData);
 	uchar * pSynthData  = reinterpret_cast<uchar *>(synthesizedImage->imageData);
 
-	g_count++;
-
 	//sanity check
-	if (x < 0 || y < 0 || x >= synthesizedImage->width || y >= synthesizedImage->height){
-		g_zeroCount++;
+	if (x < 0 || y < 0 || x >= synthesizedImage->width || y >= synthesizedImage->height)
 		return false;
-	}
 
 	if (x + textonImg->width >= synthesizedImage->width || y + textonImg->height >= synthesizedImage->height)
 		return false;
@@ -137,19 +127,15 @@ void Synthesizer::removeUnconformingTextons(vector<Cluster> &clusterList)
 			printf("getDilationArea()=%d\n",(*iter)->getDilationArea());
 			nDilationAvg += (*iter)->getDilationArea();
 		}
-		/*for (int j = 0; j < cluster.m_nClusterSize; j++){
-			printf("cluster.m_textonList[%d]->getDilationArea()=%d\n",j,cluster.m_textonList[j]->getDilationArea());
-			nDilationAvg += cluster.m_textonList[j]->getDilationArea();
-		}*/
+
 		nDilationAvg = nDilationAvg / cluster.m_nClusterSize;
 
-		printf("nDilationAvg=%lf\n", nDilationAvg);
+		//printf("nDilationAvg=%lf\n", nDilationAvg);
 		if (nDilationAvg > 2){
 			//remove all the "too-close" textons from the list
 			list<Texton*>::iterator iter = cluster.m_textonList.begin();
 			while (iter != cluster.m_textonList.end()){
 				if ((*iter)->getDilationArea() < 2){
-					printf("erased!");
 					iter = cluster.m_textonList.erase(iter);
 					cluster.m_nClusterSize--;
 				}
@@ -168,36 +154,55 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList, IplImag
 			nBackgroundCluster = i;
 	}
 
+	// FIXME: the image filling texton should be chosen
+	// TODO: pick random pixels from the chosen cluster
 	Texton * t = NULL;
-	if (nBackgroundCluster >= 0)
-		t = clusterList[nBackgroundCluster].m_textonList.front();
+	if (nBackgroundCluster >= 0){
+		//find the image filling texton
+		for (list<Texton*>::iterator iter = clusterList[nBackgroundCluster].m_textonList.begin(); 
+			iter != clusterList[nBackgroundCluster].m_textonList.end(); iter++){
+			if ((*iter)->isImageFilling()){
+				t = *iter;
+				break;
+			}
+		}
+	}
 	else
-		//random cluster
+		//pick a random texton color
 		t = clusterList[0].m_textonList.front();
 
 	IplImage * backgroundImage = cvCreateImage(cvSize(img->width,img->height), img->depth, img->nChannels);
 	const IplImage * textonImage = t->getTextonImg();
 
+	int backgroundStep = backgroundImage->widthStep;
+	uchar * pBackgroundData  = reinterpret_cast<uchar *>(backgroundImage->imageData);
+
 	int textonStep = textonImage->widthStep;
 	uchar * pTextonData  = reinterpret_cast<uchar *>(textonImage->imageData);
 
-	CvScalar newColor;
-	for (int i = 0; i < textonImage->width; i++){
-		for (int j = 0; j < textonImage->height; j++) {
-			if (pTextonData[j*textonStep+i*3+0] == m_textonBgColor.val[0] &&
-				pTextonData[j*textonStep+i*3+1] == m_textonBgColor.val[1] &&
-				pTextonData[j*textonStep+i*3+2] == m_textonBgColor.val[2])
-				continue;
-			else {
-				newColor.val[0] = pTextonData[j*textonStep+i*3+0];
-				newColor.val[1] = pTextonData[j*textonStep+i*3+1];
-				newColor.val[2] = pTextonData[j*textonStep+i*3+2];
-				break;
+	//CvScalar newColor;
+	for (int i = 0; i < backgroundImage->width; i++){
+		for (int j = 0; j < backgroundImage->height; j++) {
+			while (true) {
+				int randomX = rand() % textonImage->width;
+				int randomY = rand() % textonImage->height;
+
+				if (pTextonData[randomY*textonStep+randomX*3+0] == m_textonBgColor.val[0] &&
+					pTextonData[randomY*textonStep+randomX*3+1] == m_textonBgColor.val[1] &&
+					pTextonData[randomY*textonStep+randomX*3+2] == m_textonBgColor.val[2])
+					continue;
+				else {
+					pBackgroundData[j*backgroundStep+i*3+0] = pTextonData[randomY*textonStep+randomX*3+0];
+					pBackgroundData[j*backgroundStep+i*3+1] = pTextonData[randomY*textonStep+randomX*3+1];
+					pBackgroundData[j*backgroundStep+i*3+2] = pTextonData[randomY*textonStep+randomX*3+2];
+					break;
+				}
+				printf("%d,%d", randomX, randomY);
 			}
 		}
 	}
 
-	cvSet( backgroundImage, newColor);
+	//cvSet( backgroundImage, newColor);
 
 	return backgroundImage;
 }
@@ -213,29 +218,34 @@ IplImage* Synthesizer::synthesize(int nNewWidth, int nNewHeight, int depth, int 
 	//Retrieve background from the textons (by using an image filling texton or a random texton)
 	IplImage *backgroundImage = retrieveBackground(clusterList, tempSynthesizedImage);
 
+
 	//Remove all textons that are "too-close" according to the dilation average
 	removeUnconformingTextons(clusterList);
 
-	//choose the first texton to put in the image randomly
-	unsigned int nFirstCluster = 0;
+	unsigned int nFirstCluster = 1;
 	list<Texton*>::iterator iter;
 
+	//choose the first texton to put in the image randomly
 	while (nFirstCluster < clusterList.size()){
-		//while (nFirstCluster < clusterList.size() && (clusterList[nFirstCluster].isImageFilling()))// || clusterList[nFirstCluster].isBackground()))	
 
 		if (nFirstCluster >= clusterList.size()){
 			printf("Unable to synthesize image!\n");
 			return tempSynthesizedImage;
 		}
 
+		int n = 0;
 		int nFirstTexton;
 		do
 		{
+			if (n > clusterList[nFirstCluster].m_nClusterSize)
+				break;
+
 			iter = clusterList[nFirstCluster].m_textonList.begin();
 			nFirstTexton = rand()%clusterList[nFirstCluster].m_nClusterSize;
 			for (int i = 0; i < nFirstTexton; i++){
 				iter++;
 			}
+			n++;
 		} while ((*iter)->getPosition() != Texton::NO_BORDER || (*iter)->isImageFilling() );
 
 		if (iter != clusterList[nFirstCluster].m_textonList.end())
@@ -247,7 +257,7 @@ IplImage* Synthesizer::synthesize(int nNewWidth, int nNewHeight, int depth, int 
 
 	//Put the first texton in a place close to the the image sides, in order to allow better texton expanding
 	int x = nNewWidth / 8;
-	int y = nNewHeight / 8;
+	int y = nNewHeight / 2;
 
 	insertTexton(x, y, (*iter)->getTextonImg(), tempSynthesizedImage);
 	vector<CoOccurences>* co = (*iter)->getCoOccurences();
@@ -319,11 +329,6 @@ void Synthesizer::applyCoOccurence(int X, int Y, vector<CoOccurences>* pco, vect
 
 			Texton * texton;
 			list<Texton*>::iterator iter = curCluster.m_textonList.begin();
-
-			//if (curCluster.isBackground()){
-			//	printf("background. returning...\n");
-			//	continue;
-			//}
 
 			if (nNewX < 0 || nNewY < 0 || nNewX >= synthesizedImage->width || nNewY >= synthesizedImage->height)
 				continue;
