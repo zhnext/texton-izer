@@ -247,6 +247,7 @@ void Textonator::retrieveTextons(int nClusterSize, int nCluster, int * pTextonMa
 	cc = 0;
 	int nCurTexton = FIRST_TEXTON_NUM;
 	list<Texton*> curTextonList;
+	int nNewClusterSize = 0;
 
 	//create the new cluster
 	Cluster cluster;
@@ -329,7 +330,11 @@ void Textonator::retrieveTextons(int nClusterSize, int nCluster, int * pTextonMa
 			t->setImageFilling();
 		}
 
-		curTextonList.push_back(t);
+		//do not insert border-touching textons, for now
+		if (positionMask == Texton::NO_BORDER){
+			curTextonList.push_back(t);
+			nNewClusterSize++;
+		}
 
 /*
 		char filename[255];
@@ -355,32 +360,32 @@ void Textonator::retrieveTextons(int nClusterSize, int nCluster, int * pTextonMa
 
 	//create the cluster and add it to the cluster list
 	cluster.m_textonList = curTextonList;
-	cluster.m_nClusterSize = nClusterSize;
+	cluster.m_nClusterSize = nNewClusterSize;
 	clusterList.push_back(cluster);
 
 	//FIXME: BEAUTIFY ME
 
-	ac /= nClusterSize;
-	bc /= nClusterSize;
-	cc /= nClusterSize;
+	ac /= nNewClusterSize;
+	bc /= nNewClusterSize;
+	cc /= nNewClusterSize;
 	//printf("total average (%lf,%lf,%lf)\n", ac, bc, cc);
 	int nErrs = 0;
 	for (list<Texton*>::iterator iter = clusterList[nCluster].m_textonList.begin(); iter != clusterList[nCluster].m_textonList.end(); iter++){
 		CvScalar tMeans = (*iter)->getMeans();
 		//printf("\nRelative Texton Color mean = (%lf, %lf, %lf)\n", ac - tMeans.val[0], bc - tMeans.val[1],cc - tMeans.val[2]);
 		double relativeErr = ( (ac - tMeans.val[0])*(ac - tMeans.val[0])
-			+ (bc - tMeans.val[1]) * (bc - tMeans.val[1]) + (cc - tMeans.val[2]) * (cc - tMeans.val[2]) )/nClusterSize;
+			+ (bc - tMeans.val[1]) * (bc - tMeans.val[1]) + (cc - tMeans.val[2]) * (cc - tMeans.val[2]) )/nNewClusterSize;
 		//printf("Relative error = %lf\n", relativeErr );
 		if (relativeErr > 5)
 			nErrs++;
 	}
 
-	printf("Errors Number=%d, error/num=%lf\n",nErrs, (float)nErrs/(float)nClusterSize);
-	printf ("nCluster %d is %s\n", nCluster, (nErrs > MIN(nClusterSize - 1, 5))? "Not background" : "background");
+	printf("Errors Number=%d, error/num=%lf\n",nErrs, (float)nErrs/(float)nNewClusterSize);
+	printf ("nCluster %d is %s\n", nCluster, (nErrs > MIN(nNewClusterSize - 1, 5))? "Not background" : "background");
 
 	printf("cluster %d is %s\n", nCluster, (clusterList[nCluster].isImageFilling() ? "Image Filling" : "Not image filling"));
 
-	if (nErrs <= MIN(nClusterSize - 1, 5)) {
+	if (nErrs <= MIN(nNewClusterSize - 1, 5)) {
 		clusterList[nCluster].setBackground();
 	}
 
@@ -717,10 +722,6 @@ void Textonator::computeCoOccurences(vector<int*> pTextonMapList, vector<Cluster
 					iter++;
 
 				Texton * t = *(iter);
-				if (t->getPosition() != Texton::NO_BORDER) {
-					//printf("a side cluster. avoid for now...\n");
-					continue;
-				}
 
 				//if the texton is filling the whole image, then he cannot be trusted as neighbor
 				if (t->isImageFilling())
@@ -731,6 +732,10 @@ void Textonator::computeCoOccurences(vector<int*> pTextonMapList, vector<Cluster
 				else
 					nMinDilation = MIN(nMinDilation, Occurences[c].m_nDistance);
 				
+				if (t->getPosition() != Texton::NO_BORDER) {
+					//printf("a side cluster. avoid for now...\n");
+					continue;
+				}
 
 				SBox orgBox = curTexton->getBoundingBox();
 				SBox box = t->getBoundingBox();
