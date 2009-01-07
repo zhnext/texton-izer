@@ -154,8 +154,6 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList, IplImag
 			nBackgroundCluster = i;
 	}
 
-	// FIXME: the image filling texton should be chosen
-	// TODO: pick random pixels from the chosen cluster
 	Texton * t = NULL;
 	if (nBackgroundCluster >= 0){
 		//find the image filling texton
@@ -256,7 +254,7 @@ IplImage* Synthesizer::synthesize(int nNewWidth, int nNewHeight, int depth, int 
 
 
 	//Put the first texton in a place close to the the image sides, in order to allow better texton expanding
-	int x = nNewWidth / 8;
+	int x = nNewWidth / 2;
 	int y = nNewHeight / 2;
 
 	insertTexton(x, y, (*iter)->getTextonImg(), tempSynthesizedImage);
