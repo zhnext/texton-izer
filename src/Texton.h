@@ -46,13 +46,12 @@ public:
 					BOTTOM_BORDER = 0x8 };
 
 public:
-	Texton(IplImage * textonImg, int nCluster, int positionMask, CvScalar& means, SBox& box);
+	Texton(IplImage * textonImg, int nCluster, int positionMask, SBox& box);
 	virtual ~Texton();
 
 	const IplImage* getTextonImg() const		{ return m_textonImg; }
 	int				getClusterNumber() const	{ return m_nCluster; }
 	int				getPosition() const			{ return m_positionMask; }		
-	CvScalar		getMeans() const			{ return m_means; }
 	SBox			getBoundingBox() const		{ return m_box; }
 	vector<CoOccurences>* getCoOccurences()		{ return &m_coOccurences; }
 	int				getDilationArea() const		{ return m_nDilation; }
@@ -72,7 +71,6 @@ private:
 	int			m_nCluster;
 	int			m_positionMask;
 	int			m_nDilation;
-	CvScalar	m_means;
 	SBox		m_box;
 	vector<CoOccurences> m_coOccurences;
 

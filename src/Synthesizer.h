@@ -27,6 +27,7 @@ private:
 	IplImage * retrieveBackground(vector<Cluster> &clusterList, IplImage * img);
 
 	void removeUnconformingTextons(vector<Cluster> &clusterList);
+	void removeBorderTextons(vector<Cluster>& clusterList);
 
 private:
 
