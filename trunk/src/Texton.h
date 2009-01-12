@@ -5,8 +5,9 @@
 #include <vector>
 using std::vector;
 
-struct SBox
+class SBox
 {
+public:
 	SBox(int minx, int miny, int maxx, int maxy)
 	{
 		minX = minx;
@@ -14,6 +15,16 @@ struct SBox
 		minY = miny;
 		maxY = maxy;
 	}
+
+	inline int getWidth() {
+		return (maxX - minX);
+	}
+
+	inline int getHeight() {
+		return (maxY - minY);
+	}
+
+	int getPositionMask(IplImage *pImg);
 
 	int minX;
 	int minY;
