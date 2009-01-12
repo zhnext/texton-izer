@@ -2,21 +2,29 @@
 #define __H_SYNTHESIZER_H__
 
 #include <vector>
+#include <cv.h>
+#include <time.h>
+#include <list>
 #include "Cluster.h"
 
 using std::vector;
+using std::list;
+
 class Synthesizer
 {
 public:
 	Synthesizer();
 	virtual ~Synthesizer();
 
-	IplImage* synthesize(int nNewWidth, int nNewHeight, int depth, int nChannels, vector<Cluster> &textonList);
+	IplImage* synthesize(int nNewWidth, int nNewHeight, int depth, 
+						int nChannels, vector<Cluster> &textonList);
 
 private:
 	bool insertTexton(int x, int y, const IplImage * textonImg, IplImage* synthesizedImage);
 
-	void applyCoOccurence(int x, int y, vector<CoOccurences>* co, vector<Cluster> &clusterList, IplImage* synthesizedImage);
+	void applyCoOccurence(int x, int y, vector<CoOccurences>* co, 
+							vector<Cluster> &clusterList, 
+							IplImage* synthesizedImage);
 
 	void copyImageWithoutBorder(IplImage * src,IplImage * dst, int nBorderSize);
 	void copyImageWithoutBackground(IplImage * src,IplImage * dst);
@@ -33,7 +41,7 @@ private:
 
 	CvScalar m_textonBgColor;
 	CvScalar m_resultBgColor;
-	int		m_nBorder;
+	int		 m_nBorder;
 };
 
 class CoOccurenceQueueItem

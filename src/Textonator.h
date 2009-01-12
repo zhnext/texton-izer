@@ -50,10 +50,13 @@ private:
 	void	assignStrayPixels(int * ppTextonMap, int nSize);
 
 	void	extractTexton(int minX, int maxX, int minY, int maxY, uchar * pImageData, IplImage* pTexton);
-
+	void	extractTexton(SBox& boundingBox, 
+							uchar * pImageData, 
+							IplImage* pTexton);
 	void	computeCoOccurences(vector<int*> pTextonMapList, vector<Cluster>& clusterList);
 
 private:
+	void getNeighbors(int *map, int i, int j, int width, int height, int arrNeighbors[]);
 
 	IplImage*	m_pImg;
 	IplImage*	m_pOutImg;
