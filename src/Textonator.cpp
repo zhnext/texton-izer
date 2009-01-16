@@ -138,7 +138,6 @@ void Textonator::cannyEdgeDetect()
 
 	cvCvtColor(m_pOutImg, bn, CV_BGR2GRAY);
 
-	//cvCanny(bn, m_pSegmentBoundaries, 80, 110);
 	cvCanny(bn, m_pSegmentBoundaries, 70, 90);
 
     cvReleaseImage(&bn);
@@ -252,8 +251,8 @@ int Textonator::scanForTextons(int nCluster, int * pTextonMap)
 				// Check if our texton is large enough
 				if (m_nCurTextonSize > m_nMinTextonSize){
 					nTexton++;
-					printf("\t(Texton #%d) i=%d,j=%d, Size=%d\n", 
-							nTexton - FIRST_TEXTON_NUM, i, j, m_nCurTextonSize);
+					//printf("\t(Texton #%d) i=%d,j=%d, Size=%d\n", 
+					//		nTexton - FIRST_TEXTON_NUM, i, j, m_nCurTextonSize);
 				}
 				else
 				{
@@ -278,7 +277,7 @@ void Textonator::retrieveTextons(int nClusterSize,
 								 int * pTextonMap, 
 								 vector<Cluster>& clusterList)
 {
-	printf("Retrieving textons...\n");
+	printf("Retrieving textons...\n\n");
 
 	uchar * pData  = (uchar *) m_pOutImg->imageData;
 
@@ -507,11 +506,8 @@ void Textonator::assignRemainingData(int * pTextonMap)
 				nCurTexton = pTextonMap[j * m_pOutImg->width + i];
 
 				//we check only unclustered data
-				if (nCurTexton != UNCLUSTERED_DATA) {
-					// TODO: ??
-					//pTextonMap[j * m_pOutImg->width + i] = pTextonMap[j * m_pOutImg->width + i];
+				if (nCurTexton != UNCLUSTERED_DATA)
 					continue;
-				}
 
 				getNeighbors(pTextonMap, i, j, m_pOutImg->width, m_pOutImg->height, nOtherTextons);
 
@@ -544,7 +540,7 @@ void Textonator::assignRemainingData(int * pTextonMap)
 
 void Textonator::extractTextons(int nCluster, vector<Cluster>& clusterList, int * pTextonMap)
 {
-	printf("Extracting textons from cluster #%d:\n\n", nCluster);
+	printf("Extracting textons from cluster #%d...\n", nCluster);
 
 	//initialize the texton map
 	int nSize = m_pOutImg->height * m_pOutImg->width;
@@ -552,8 +548,6 @@ void Textonator::extractTextons(int nCluster, vector<Cluster>& clusterList, int 
 
 	// Extract textons from cluster
 	int nClusterSize = scanForTextons(nCluster, pTextonMap);
-
-	printf("Fixing textons...\n");
 
 	//assign all the remaining untextoned pixels the closest texton
 	assignRemainingData(pTextonMap);
