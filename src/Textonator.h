@@ -102,6 +102,10 @@ private:
 	void	assignTextons(int x, int y, uchar * pData, int * pTextonMap, int nTexton);
 	void	retrieveTextons(int nTexton, int nCluster, int * pTextonMap, vector<Cluster>& clusterList);
 	
+	/**
+	 * Assign all the remaining untextoned pixels the closest texton
+	 * @param pTextonMap - texton map to use for assignment
+	 **/
 	void	assignRemainingData(int * pTextonMap);
 
 	/**
