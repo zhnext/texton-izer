@@ -83,7 +83,7 @@ bool CFeatureExtraction::GetGaborResponse(CvMat * pGaborMat)
 {
 	float* pMatPos;
 	int idx = 0;
-	printf("Acquiring Gabor Responses...\n");	
+	printf("* Acquiring Gabor Responses...\n");	
 
 	// Convert our image to grayscale (Gabor doesn't care about colors! I hope?)	
 	IplImage *pGrayImg = cvCreateImage(cvSize(m_pSrcImg->width,m_pSrcImg->height), IPL_DEPTH_32F, 1);
@@ -135,7 +135,7 @@ bool CFeatureExtraction::GetGaborResponse(CvMat * pGaborMat)
 
 bool CFeatureExtraction::GetColorChannels(CvMat * pChannels, CvMat * pColorChannelsArr[])
 {
-	printf("Acquiring color channels...\n");	
+	printf("* Acquiring color channels...\n");	
 	int nSize = COLOR_CHANNEL_NUM;
 	
 	// Convert to LAB color space
@@ -161,7 +161,7 @@ bool CFeatureExtraction::GetColorChannels(CvMat * pChannels, CvMat * pColorChann
 
 bool CFeatureExtraction::GetTextureChannels(CvMat * pChannels, CvMat * pTextureChannelsArr[])
 {
-	printf("Acquiring texture channels...\n");	
+	printf("* Acquiring texture channels...\n");	
 
 	int nGaborSize = GABOR_SIZE;
 	int nHistSize = 30;
@@ -322,15 +322,13 @@ CFeatureExtraction::~CFeatureExtraction()
 
 bool CFeatureExtraction::run()
 {
-	printf("Starting the feature extraction process.\n");
-
 	GetColorChannels(m_pColorChannels, m_pColorChannelsArr);
 
 	GetTextureChannels(m_pTextureChannels, m_pTextureChannelsArr);
 	
 	MergeMatrices(m_pColorChannels, m_pTextureChannels, m_pPrincipalChannels);
 	
-	printf("Finished extracting features!\n\n");
+	printf(">>> Feature Extraction phase completed successfully! <<<\n\n");
 	return true;
 }
 
