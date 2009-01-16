@@ -54,20 +54,75 @@ private:
 	void	segment();
 	void	cluster(CFeatureExtraction *pFeatureExtractor);
 
+	/**
+	 * Color all pixels which are not in the cluster nCluster
+	 * @param the cluster which should not be colored
+	 **/
     void	colorCluster(int nCluster);
+
 	void	blurImage();
+
+	/**
+	 * Use Canny edge detector to create a edge image in m_pSegmentBoundariess
+	 **/
 	void	cannyEdgeDetect();
+
 	void	extractTextons(int nCluster, vector<Cluster>& clusterList, int * pTextonMap);
 
+	/**
+	 * Create a texton map of the current cluster
+	 * @param nCluster the current cluster
+	 * @param pTextonMap the result texton map
+	 * @return the number of textons we colored
+	 **/
 	int		scanForTextons(int nCluster, int * pTextonMap);
+
+	/**
+	 * Color a texton "map" based on the clustering:
+     * For pixels inside nCluster:
+	 *	 BORDER_DATA for edges which we found in pBorderData, 
+	 *	 UNCLUSTERED_DATA for things which are not edges
+	 * For pixels outside nCluster
+	 *	 OUT_OF_SEGMENT_DATA
+	 * @param pBorderData the edge image input
+	 * @param pTextonMap the texton map to color
+	 * @param nCluster the current cluster number
+	 **/
 	void	colorTextonMap(uchar *pBorderData,int * pTextonMap,int nCluster);
-	void	assignTextons(int x, int y, uchar * pData, int * pTextonMap, int nClust);
+
+	/**
+	 * "Flood fill" pTextonMap with the value nTexton from the current coordinate
+	 * Stop on borders and when we are out of our cluster
+	 * @param x the x value to check
+	 * @param y the y value to check
+	 * @param pData the image data
+	 * @param pTextonMap the textons location map
+	 * @param nTexton the current texton
+	 **/
+	void	assignTextons(int x, int y, uchar * pData, int * pTextonMap, int nTexton);
 	void	retrieveTextons(int nTexton, int nCluster, int * pTextonMap, vector<Cluster>& clusterList);
 	
 	void	assignRemainingData(int * pTextonMap);
+
+	/**
+	 * Assign any lonely pixels, that appear inside a texton, 
+	 * and belong to another cluster, to that texton
+	 * @param ppTextonMap a pointer to the current texton map
+	 * @param nSize the texton map size
+	 **/
 	void	assignStrayPixels(int * ppTextonMap, int nSize);
 
+	/**
+	 * Extract bounding box minX,minY,maxX,maxY from pImageData to pTexton
+	 **/
 	void	extractTexton(int minX, int maxX, int minY, int maxY, uchar * pImageData, IplImage* pTexton);
+	
+	/**
+	 * Extract boundingBox from pImageData to pTexton
+	 * @param boundingBox the bounding box to extract
+	 * @param pImageData the image to extract the data from
+	 * @param pTexton the texton to extract the data to
+	 **/
 	void	extractTexton(SBox& boundingBox, 
 							uchar * pImageData, 
 							IplImage* pTexton);
@@ -77,8 +132,16 @@ private:
 	void	retrieveTextonCoOccurences(int nCluster, int nOffsetCurTexton, vector<Occurence>& Occurences, CvScalar& bg, uchar * pData,vector<int*> pTextonMapList);
 	void	computeTextonCoOccurences(Texton * curTexton, vector<Occurence>& Occurences, vector<Cluster>& clusterList);
 
-private:
+	/**
+	 * Get 8 neighbors of the current pixel
+	 * @param map - the map the extract neighbor values from
+	 * @param i, j - the coordinates whose neighbors we want
+	 * @param width, height - width and height of map
+	 * @param[out] arrNeighbors - the output array of neighbor values
+	 **/
 	void getNeighbors(int *map, int i, int j, int width, int height, int arrNeighbors[]);
+
+private:
 
 	IplImage*	m_pImg;
 	IplImage*	m_pOutImg;

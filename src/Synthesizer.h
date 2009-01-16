@@ -13,6 +13,9 @@ using std::list;
 #define AVG_DILATION_ERROR		2
 #define MAXIMUM_TEXTON_OVERLAP	8
 
+#define RESULT_BG_COLOR			cvScalarAll(5)
+#define IMG_BORDER				50
+
 /**
  * A Synthesizer class that retrieves a list of textons partitioned by clusters and
  * outputs a new synthesized image.

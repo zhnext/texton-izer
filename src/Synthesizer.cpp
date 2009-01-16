@@ -1,10 +1,6 @@
 #include "Synthesizer.h"
 #include "defs.h"
 
-#define RESULT_BG_COLOR		cvScalarAll(5)
-#define IMG_BORDER		50
-
-
 bool SortTextonsPredicate(Texton*& lhs, Texton*& rhs)
 {
 	return (*lhs) < (*rhs);
@@ -207,7 +203,6 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList, IplImag
 					pBackgroundData[j*backgroundStep+i*3+2] = pTextonData[randomY*textonStep+randomX*3+2];
 					break;
 				}
-				printf("%d,%d", randomX, randomY);
 			}
 		}
 	}
@@ -243,7 +238,7 @@ IplImage* Synthesizer::synthesize(int nNewWidth, int nNewHeight, int depth,
 	copyImageWithoutBackground(tempSynthesizedImage, backgroundImage);
 	copyImageWithoutBorder(backgroundImage, synthesizedImage, m_nBorder/2);
 
-	printf("\nImage synthesizing completed successfully!\n\n");
+	printf("\n>>> Texton-Based Synthesizing phase completed successfully! <<<\n\n");
 
 	cvReleaseImage(&backgroundImage);
 	cvReleaseImage(&tempSynthesizedImage);
@@ -265,7 +260,7 @@ bool Synthesizer::checkSurrounding(int x, int y,
 	//Close textons make it possible to assume safe surrounding if they do not overlap
 	//to much
 	if (nArea < 2){
-		int nCount = 0;
+		int nOverlapCount = 0;
 
 		//check if there is a painted texton somewhere that we may overlap
 		for (int i = 0; i < t->getTextonImg()->width; i++){
@@ -282,35 +277,29 @@ bool Synthesizer::checkSurrounding(int x, int y,
 					pSynthData[(j+y)*synthStep+(i+x)*3+1] != m_resultBgColor.val[1] ||
 					pSynthData[(j+y)*synthStep+(i+x)*3+2] != m_resultBgColor.val[2])
 				{
-					nCount++;
-
+					nOverlapCount++;
+					//allow small overlaps
+					if (nOverlapCount > MAXIMUM_TEXTON_OVERLAP)
+						return false;
 				}
 			}
 		}
-		//allow small overlaps
-		if (nCount > 0)
-		{
-			if (nCount > MAXIMUM_TEXTON_OVERLAP)
-				return false;
-		}
-
-		return true;
 	}
+	else {
+		int maxWidth = MIN(x + t->getTextonImg()->width + nArea, synthesizedImage->width);
+		int maxHeight = MIN(y + t->getTextonImg()->height + nArea, synthesizedImage->height);
 
-	int maxWidth = MIN(x + t->getTextonImg()->width + nArea, synthesizedImage->width);
-	int maxHeight = MIN(y + t->getTextonImg()->height + nArea, synthesizedImage->height);
-
-	for (int i = MAX(x - nArea, 0) ; i < maxWidth; i++){
-		for (int j = MAX(y - nArea, 0); j < maxHeight; j++) {
-			//if there is any collisions in the texton surrounding, declare the surrounding 'false'
-			if (pSynthData[j*synthStep+i*3+0] != m_resultBgColor.val[0] ||
-				pSynthData[j*synthStep+i*3+1] != m_resultBgColor.val[1] ||
-				pSynthData[j*synthStep+i*3+2] != m_resultBgColor.val[2]){
-					return false;
+		for (int i = MAX(x - nArea, 0) ; i < maxWidth; i++){
+			for (int j = MAX(y - nArea, 0); j < maxHeight; j++) {
+				//if there is any collisions in the texton surrounding, declare the surrounding 'false'
+				if (pSynthData[j*synthStep+i*3+0] != m_resultBgColor.val[0] ||
+					pSynthData[j*synthStep+i*3+1] != m_resultBgColor.val[1] ||
+					pSynthData[j*synthStep+i*3+2] != m_resultBgColor.val[2]){
+						return false;
+				}
 			}
 		}
 	}
-
 	return true;
 }
 
@@ -334,7 +323,7 @@ Texton* Synthesizer::chooseFirstTexton(vector<Cluster> &clusterList)
 	}
 
 	if (nFirstCluster >= clusterList.size()){
-		printf("Unable to synthesize image!\n");
+		printf("+++ Unable to synthesize image! +++\n");
 		throw SynthesizerException();
 	}
 
@@ -347,7 +336,7 @@ void Synthesizer::synthesizeImage(vector<Cluster> &clusterList, IplImage * synth
 	Texton * texton = NULL;
 	Texton * firstTexton = chooseFirstTexton(clusterList);
 
-	printf("Synthesizing image");
+	printf("* Synthesizing image");
 
 	// Put the first texton in a place close to the the image sides, 
 	// in order to allow better texton expanding
