@@ -80,7 +80,7 @@ int main(int argc, char ** argv)
 
 
 	std::string s(argv[1]);
-	s += ".jpg";
+	s += "_result.jpg";
 	sprintf_s(filename, 255,s.c_str());
 	cvNamedWindow( filename, 1 );
 	cvShowImage( filename, result );
