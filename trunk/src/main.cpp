@@ -39,8 +39,15 @@ int main(int argc, char ** argv)
 	cvWaitKey(300);
 	//cvDestroyWindow(filename);
 
+	time_t t1 = time(NULL);
+	DWORD time1 = GetTickCount();
 	Textonator * textonator = new Textonator(pInputImage, clusters, nMinTextonSize);
 	textonator->textonize(clusterList);
+	DWORD time2 = GetTickCount();
+	time_t t2 = time(NULL);
+	printf("Textonator diff time = %ld, %d seconds\n", time2 - time1, t2 - t1);
+
+
 	/*
 	//save the textons
 	for (unsigned int i = 0; i < clusterList.size(); i++) {
@@ -63,15 +70,18 @@ int main(int argc, char ** argv)
 		}
 	}*/
 
-	time_t t1 = time(NULL);
-	DWORD time1 = GetTickCount();
+	t1 = time(NULL);
+	time1 = GetTickCount();
 	Synthesizer synthesizer;
-	IplImage * result = synthesizer.synthesize(400, 293, pInputImage->depth, pInputImage->nChannels, clusterList);
-	DWORD time2 = GetTickCount();
-	time_t t2 = time(NULL);
-	printf("diff time = %ld, %d seconds\n", time2 - time1, t2 - t1);
+	IplImage * result = synthesizer.synthesize(300, 300, pInputImage->depth, pInputImage->nChannels, clusterList);
+	time2 = GetTickCount();
+	t2 = time(NULL);
+	printf("Synthesizer diff time = %ld, %d seconds\n", time2 - time1, t2 - t1);
 
-	sprintf_s(filename, 255,"Stones_Result.jpg");
+
+	std::string s(argv[1]);
+	s += ".jpg";
+	sprintf_s(filename, 255,s.c_str());
 	cvNamedWindow( filename, 1 );
 	cvShowImage( filename, result );
 	//cvSaveImage(filename,result);

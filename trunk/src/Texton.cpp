@@ -2,7 +2,7 @@
 
 int SBox::getPositionMask(IplImage *pImg) 
 {
-	int nPositionMask = Texton::NO_BORDER;
+	int nPositionMask = Texton::NON_BORDER;
 	if (minX == 0)
 		nPositionMask |= Texton::LEFT_BORDER;
 	if (minY == 0)

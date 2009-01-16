@@ -50,7 +50,7 @@ public:
 class Texton
 {
 public:
-	enum EPosition { NO_BORDER = 0x0, 
+	enum EPosition { NON_BORDER = 0x0, 
 					TOP_BORDER = 0x1, 
 					LEFT_BORDER = 0x2, 
 					RIGHT_BORDER = 0x4, 

@@ -20,6 +20,24 @@ using std::vector;
 
 #define UNDEFINED			-1
 
+#define MAX_DILATIONS		100
+#define EXTRA_DILATIONS		20
+
+class Occurence
+{
+public:
+	Occurence(int nTexton, int nCluster,int nDistance = UNDEFINED)
+		:m_nDistance(nDistance),m_nTexton(nTexton),m_nCluster(nCluster) {}
+
+	bool operator==(const Occurence& o) {
+		return (m_nCluster == o.m_nCluster && m_nTexton == o.m_nTexton);
+	}
+
+	int m_nDistance;
+	int m_nTexton;
+	int m_nCluster;
+};
+
 class Textonator
 {
 public:
@@ -53,7 +71,11 @@ private:
 	void	extractTexton(SBox& boundingBox, 
 							uchar * pImageData, 
 							IplImage* pTexton);
+	
+	
 	void	computeCoOccurences(vector<int*> pTextonMapList, vector<Cluster>& clusterList);
+	void	retrieveTextonCoOccurences(int nCluster, int nOffsetCurTexton, vector<Occurence>& Occurences, CvScalar& bg, uchar * pData,vector<int*> pTextonMapList);
+	void	computeTextonCoOccurences(Texton * curTexton, vector<Occurence>& Occurences, vector<Cluster>& clusterList);
 
 private:
 	void getNeighbors(int *map, int i, int j, int width, int height, int arrNeighbors[]);
@@ -72,15 +94,5 @@ private:
 	
 };
 
-class Occurence
-{
-public:
-	Occurence(int nDistance, int nTexton, int nCluster)
-		:m_nDistance(nDistance),m_nTexton(nTexton),m_nCluster(nCluster) {}
-
-	int m_nDistance;
-	int m_nTexton;
-	int m_nCluster;
-};
 
 #endif	//_H_SEGMENTATOR_H_
