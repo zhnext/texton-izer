@@ -262,6 +262,19 @@ bool Synthesizer::checkSurrounding(int x, int y,
 	if (nArea < 2){
 		int nOverlapCount = 0;
 
+		//sanity check
+		if (x < 0 || 
+			y < 0 || 
+			x >= synthesizedImage->width || 
+			y >= synthesizedImage->height){
+				return false;
+		}
+
+		if (x + t->getTextonImg()->width >= synthesizedImage->width || 
+			y + t->getTextonImg()->height >= synthesizedImage->height){
+				return false;
+		}
+
 		//check if there is a painted texton somewhere that we may overlap
 		for (int i = 0; i < t->getTextonImg()->width; i++){
 			for (int j = 0, jtextonStep = 0; j < t->getTextonImg()->height; j++, jtextonStep += textonStep) 
@@ -316,6 +329,7 @@ Texton* Synthesizer::chooseFirstTexton(vector<Cluster> &clusterList)
 			for (int i = 0; i < nFirstTexton; i++){
 				iter++;
 			}
+
 			break;
 		}
 		else
