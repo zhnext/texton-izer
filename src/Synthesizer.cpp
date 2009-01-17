@@ -88,9 +88,9 @@ void Synthesizer::copyImageWithoutBackground(IplImage * src, IplImage * dst)
 
 	for (int i = 0; i < src->width; i++){
 		for (int j = 0; j < src->height; j++) {
-			if (pSrcData[j*srcStep+i*3+0] != m_resultBgColor.val[0] ||
-				pSrcData[j*srcStep+i*3+1] != m_resultBgColor.val[1] ||
-				pSrcData[j*srcStep+i*3+2] != m_resultBgColor.val[2]){
+			if ((pSrcData[j*srcStep+i*3+0] != m_resultBgColor.val[0] && pSrcData[j*srcStep+i*3+0] != 50)||
+				(pSrcData[j*srcStep+i*3+1] != m_resultBgColor.val[1] && pSrcData[j*srcStep+i*3+1] != 50) ||
+				(pSrcData[j*srcStep+i*3+2] != m_resultBgColor.val[2] && pSrcData[j*srcStep+i*3+2] != 50)){
 					pDstData[j*dstStep+i*3+0] = pSrcData[j*srcStep+i*3+0];
 					pDstData[j*dstStep+i*3+1] = pSrcData[j*srcStep+i*3+1];
 					pDstData[j*dstStep+i*3+2] = pSrcData[j*srcStep+i*3+2];
@@ -227,7 +227,7 @@ IplImage* Synthesizer::synthesize(int nNewWidth, int nNewHeight, int depth,
 
 	/* Remove unnecessary textons */
 	//Remove all textons that are "too-close" according to the dilation average
-	removeNonconformingTextons(clusterList);
+	//removeNonconformingTextons(clusterList);
 	//Remove all textons that touch a border
 	removeBorderTextons(clusterList);
 
@@ -296,6 +296,16 @@ bool Synthesizer::checkSurrounding(int x, int y,
 				}
 			}
 		}
+
+	/*	//check if there is a painted texton somewhere that we may overlap
+		for (int i = 0; i < t->getTextonImg()->width; i++){
+			for (int j = 0, jtextonStep = 0; j < t->getTextonImg()->height; j++, jtextonStep += textonStep) 
+			{
+				pSynthData[(j+y)*synthStep+(i+x)*3+0] = 50;
+				pSynthData[(j+y)*synthStep+(i+x)*3+1] = 50;
+				pSynthData[(j+y)*synthStep+(i+x)*3+2] = 50;
+			}
+		}*/
 	}
 	else {
 		int maxWidth = MIN(x + t->getTextonImg()->width + nArea, synthesizedImage->width);
@@ -309,6 +319,14 @@ bool Synthesizer::checkSurrounding(int x, int y,
 					pSynthData[j*synthStep+i*3+2] != m_resultBgColor.val[2]){
 						return false;
 				}
+			}
+		}
+
+		for (int i = MAX(x - nArea, 0) ; i < maxWidth; i++){
+			for (int j = MAX(y - nArea, 0); j < maxHeight; j++) {
+				pSynthData[j*synthStep+i*3+0] = 50;
+				pSynthData[j*synthStep+i*3+1] = 50;
+				pSynthData[j*synthStep+i*3+2] = 50;
 			}
 		}
 	}

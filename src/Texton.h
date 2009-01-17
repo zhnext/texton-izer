@@ -82,10 +82,11 @@ private:
 	int			m_nCluster;
 	int			m_positionMask;
 	int			m_nDilation;
+	int			m_nAppereances;
 	SBox		m_box;
 	vector<CoOccurences> m_coOccurences;
 
-	int			m_nAppereances;
+	
 };
 
 
