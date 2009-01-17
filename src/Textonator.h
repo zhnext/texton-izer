@@ -21,7 +21,7 @@ using std::vector;
 #define UNDEFINED			-1
 
 #define MAX_DILATIONS		100
-#define EXTRA_DILATIONS		20
+#define EXTRA_DILATIONS		30
 
 class Occurence
 {
@@ -133,7 +133,7 @@ private:
 	
 	
 	void	computeCoOccurences(vector<int*> pTextonMapList, vector<Cluster>& clusterList);
-	void	retrieveTextonCoOccurences(int nCluster, int nOffsetCurTexton, vector<Occurence>& Occurences, CvScalar& bg, uchar * pData,vector<int*> pTextonMapList);
+	void	retrieveTextonCoOccurences(int nCluster, int nOffsetCurTexton, vector<Occurence>& Occurences, CvScalar& bg, uchar * pData,vector<int*> pTextonMapList, vector<Cluster>& clusterList);
 	void	computeTextonCoOccurences(Texton * curTexton, vector<Occurence>& Occurences, vector<Cluster>& clusterList);
 
 	/**
