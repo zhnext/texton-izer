@@ -124,7 +124,6 @@ void Synthesizer::removeNonconformingTextons(vector<Cluster> &clusterList)
 		Cluster& cluster = clusterList[i];
 		nDilationAvg = 0.0;
 		for (list<Texton*>::iterator iter = cluster.m_textonList.begin(); iter != cluster.m_textonList.end(); iter++){
-			//printf("getDilationArea()=%d\n",(*iter)->getDilationArea());
 			nDilationAvg += (*iter)->getDilationArea();
 		}
 
@@ -313,12 +312,13 @@ bool Synthesizer::checkSurrounding(int x, int y,
 			}
 		}
 	}
+
 	return true;
 }
 
 Texton* Synthesizer::chooseFirstTexton(vector<Cluster> &clusterList)
 {
-	unsigned int nFirstCluster = 1;
+	unsigned int nFirstCluster = 0;
 	list<Texton*>::iterator iter;
 
 	//choose the first texton to put in the image randomly
@@ -372,6 +372,7 @@ void Synthesizer::synthesizeImage(vector<Cluster> &clusterList, IplImage * synth
 		vector<CoOccurences> co = *(curItem.m_co);
 
 		for (unsigned int ico = 0; ico < co.size(); ico++){
+			//printf("co[ico].distX=%d,co[ico].distY=%d\n", co[ico].distX, co[ico].distY);
 			Cluster& curCluster = clusterList[co[ico].nCluster];
 			int nNewX = curItem.m_x + co[ico].distX;
 			int nNewY = curItem.m_y + co[ico].distY;

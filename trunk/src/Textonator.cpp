@@ -560,7 +560,7 @@ void Textonator::colorWindow(int x, int y, int sizeX, int sizeY)
   }
 }
 
-void Textonator::retrieveTextonCoOccurences(int nCluster, int nOffsetCurTexton, vector<Occurence>& Occurences, CvScalar& bg, uchar * pData,vector<int*> pTextonMapList)
+void Textonator::retrieveTextonCoOccurences(int nCluster, int nOffsetCurTexton, vector<Occurence>& Occurences, CvScalar& bg, uchar * pData,vector<int*> pTextonMapList, vector<Cluster>& clusterList)
 {
 	int nDilationSize = 1;
 	int nDilation = 0;
@@ -587,6 +587,16 @@ void Textonator::retrieveTextonCoOccurences(int nCluster, int nOffsetCurTexton, 
 								pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i] == nOffsetCurTexton && 
 								nCurrentCluster != nCluster){
 
+									//Retrieve texton
+									list<Texton*>::iterator iter = clusterList[nCurrentCluster].m_textonList.begin(); 
+									for (int p = 0; p < pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i] - FIRST_TEXTON_NUM; p++)
+										iter++;
+
+									Texton * t = *(iter);
+
+									if (t->isImageFilling())
+										continue;
+
 									bool isInList = false;
 									/*Occurence tempO(pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i], nCurrentCluster);
 									if (std::find(Occurences.begin(), Occurences.end(), tempO) != Occurences.end()){
@@ -605,7 +615,7 @@ void Textonator::retrieveTextonCoOccurences(int nCluster, int nOffsetCurTexton, 
 										//remember the size of the area where there is no texton intersection
 										if (Occurences.size() == 0){
 											//from the moment we occur another texton, we will dilate oncee EXTRA_DILATIONS
-											nMaxDilations = nDilation + 2;
+											nMaxDilations = nDilation + nDilationSize + 1;
 											nDilationSize = EXTRA_DILATIONS;
 										}
 
@@ -629,7 +639,7 @@ void Textonator::computeTextonCoOccurences(Texton * curTexton, vector<Occurence>
 {
 	vector<CoOccurences> coOccurencesList;
 
-	int nMinDilation = -1;
+	int nMinDilation = UNDEFINED;
 	size_t fSides[4];
 	memset(fSides, 0, 4 * sizeof(int));
 
@@ -639,16 +649,15 @@ void Textonator::computeTextonCoOccurences(Texton * curTexton, vector<Occurence>
 		for (int i = 0; i < Occurences[c].m_nTexton - FIRST_TEXTON_NUM; i++)
 			iter++;
 
-
 		Texton * t = *(iter);
 
 		//if the texton is filling the whole image, then he cannot be trusted as neighbor
 		if (t->isImageFilling())
 			continue;
 
-		if (nMinDilation == -1)
+		if (nMinDilation == UNDEFINED)
 			nMinDilation = Occurences[c].m_nDistance;
-		else
+		else 
 			nMinDilation = MIN(nMinDilation, Occurences[c].m_nDistance);
 
 		//Avoid side textons
@@ -741,7 +750,7 @@ void Textonator::computeCoOccurences(vector<int*> pTextonMapList, vector<Cluster
 				}
 			}
 			
-			retrieveTextonCoOccurences(nCluster, nOffsetCurTexton, textonOccurencesList, bg, pData,pTextonMapList);
+			retrieveTextonCoOccurences(nCluster, nOffsetCurTexton, textonOccurencesList, bg, pData,pTextonMapList, clusterList);
 			
 			//Compute co occurences relations only to non border textons
 			if (curTexton->getPosition() == Texton::NON_BORDER) 
