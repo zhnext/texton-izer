@@ -34,7 +34,7 @@ void Textonator::blurImage()
 	//gaussian blur (5x5) the image, to smooth out the texture while preserving edge information
 	//cvPyrUp(m_pOutImg, pPyrImg, CV_GAUSSIAN_5x5);
 	//cvPyrDown(pPyrImg, m_pOutImg, CV_GAUSSIAN_5x5);
-	//cvSmooth(m_pOutImg, m_pOutImg);
+	cvSmooth(m_pOutImg, m_pOutImg);
 
 	cvReleaseImage(&pPyrImg);
 }
