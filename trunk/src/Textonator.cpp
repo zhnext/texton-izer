@@ -328,8 +328,8 @@ void Textonator::retrieveTextons(int nClusterSize,
 		////
 		////
 		if (xSize >= m_pImg->width - 10 || ySize >= m_pImg->height - 10){
-			cluster.setImageFilling();
-			t->setImageFilling();
+			cluster.setImageBackground();
+			t->setImageBackground();
 		}
 
 		curTextonList.push_back(t);
@@ -594,7 +594,7 @@ void Textonator::retrieveTextonCoOccurences(int nCluster, int nOffsetCurTexton, 
 
 									Texton * t = *(iter);
 
-									if (t->isImageFilling())
+									if (t->isImageBackground())
 										continue;
 
 									bool isInList = false;
@@ -652,7 +652,7 @@ void Textonator::computeTextonCoOccurences(Texton * curTexton, vector<Occurence>
 		Texton * t = *(iter);
 
 		//if the texton is filling the whole image, then he cannot be trusted as neighbor
-		if (t->isImageFilling())
+		if (t->isImageBackground())
 			continue;
 
 		if (nMinDilation == UNDEFINED)
@@ -733,7 +733,7 @@ void Textonator::computeCoOccurences(vector<int*> pTextonMapList, vector<Cluster
 			Texton * curTexton = (*iter);
 
 			//this texton is probably background as it fills the whole image and cannot really be used
-			if (curTexton->isImageFilling())
+			if (curTexton->isImageBackground())
 				continue;
 
 			//"Replenish" the original image

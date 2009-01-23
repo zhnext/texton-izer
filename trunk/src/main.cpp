@@ -73,7 +73,7 @@ int main(int argc, char ** argv)
 	t1 = time(NULL);
 	time1 = GetTickCount();
 	Synthesizer synthesizer;
-	IplImage * result = synthesizer.synthesize(600, 600, pInputImage->depth, pInputImage->nChannels, clusterList);
+	IplImage * result = synthesizer.synthesize(300, 300, pInputImage->depth, pInputImage->nChannels, clusterList);
 	time2 = GetTickCount();
 	t2 = time(NULL);
 	printf("Synthesizer diff time = %ld, %d seconds\n", time2 - time1, t2 - t1);
