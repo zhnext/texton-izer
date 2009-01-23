@@ -158,7 +158,8 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList, IplImag
 	}
 
 	IplImage * backgroundImage = cvCreateImage(cvSize(img->width,img->height), img->depth, img->nChannels);
-	cvSet(backgroundImage, cvScalarAll(0));
+	CvScalar bgColor = cvScalarAll(0);
+	cvSet(backgroundImage, bgColor);
 	Texton * t = NULL;
 	if (nBackgroundCluster >= 0) {
 		// Find the image filling texton
@@ -188,9 +189,9 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList, IplImag
 
 		while (true) {
 			//If the pixel is already colored, we don't activate the algorithm on it
-			if (pBackgroundData[b*backgroundStep+a*3+0] != 0 ||
-				pBackgroundData[b*backgroundStep+a*3+1] != 0 ||
-				pBackgroundData[b*backgroundStep+a*3+2] != 0) {
+			if (pBackgroundData[b*backgroundStep+a*3+0] != bgColor.val[0] ||
+				pBackgroundData[b*backgroundStep+a*3+1] != bgColor.val[1] ||
+				pBackgroundData[b*backgroundStep+a*3+2] != bgColor.val[2]) {
 				a++;
 				if (a >= backgroundImage->width){
 					a = 0;
@@ -209,8 +210,9 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList, IplImag
 			
 			int x = rand() % (tempImg->width - 2*radius) + radius;
 			int y = rand() % (tempImg->height - 2*radius) + radius;
+			CvScalar circleColor = cvScalarAll(1);
 
-			cvCircle(tempImg, cvPoint(x,y), radius, cvScalarAll(1), -1);
+			cvCircle(tempImg, cvPoint(x,y), radius, circleColor, -1);
 
 			//Extract all the circled area of the texton to the background
 			int aa = a - radius;
@@ -222,9 +224,9 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList, IplImag
 						pTextonData[j*textonStep+i*3+2] == m_textonBgColor.val[2])
 						continue;
 
-					if (pTempImgData[j*tempimgStep+i*3+0] == 1 &&
-						pTempImgData[j*tempimgStep+i*3+1] == 1 &&
-						pTempImgData[j*tempimgStep+i*3+2] == 1){
+					if (pTempImgData[j*tempimgStep+i*3+0] == circleColor.val[0] &&
+						pTempImgData[j*tempimgStep+i*3+1] == circleColor.val[0] &&
+						pTempImgData[j*tempimgStep+i*3+2] == circleColor.val[0]){
 							if (bb >= backgroundImage->height || aa >= backgroundImage->width)
 								continue;
 							if (bb < 0 || aa < 0)
@@ -272,14 +274,14 @@ IplImage* Synthesizer::synthesize(int nNewWidth, int nNewHeight, int depth,
 
 	/* Synthesize the image using the given clusters */
 	synthesizeImage(clusterList, tempSynthesizedImage);
-
+/*
 	char filename[255];
 	strcpy(filename, "bl");
 	cvNamedWindow( filename, 1 );
 	cvShowImage( filename, backgroundImage );
 	cvWaitKey(0);
 	cvDestroyWindow(filename);
-
+*/
 	copyImageWithoutBackground(tempSynthesizedImage, backgroundImage);
 	copyImageWithoutBorder(backgroundImage, synthesizedImage, m_nBorder/2);
 
