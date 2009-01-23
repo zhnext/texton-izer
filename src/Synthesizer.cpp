@@ -274,14 +274,7 @@ IplImage* Synthesizer::synthesize(int nNewWidth, int nNewHeight, int depth,
 
 	/* Synthesize the image using the given clusters */
 	synthesizeImage(clusterList, tempSynthesizedImage);
-/*
-	char filename[255];
-	strcpy(filename, "bl");
-	cvNamedWindow( filename, 1 );
-	cvShowImage( filename, backgroundImage );
-	cvWaitKey(0);
-	cvDestroyWindow(filename);
-*/
+
 	copyImageWithoutBackground(tempSynthesizedImage, backgroundImage);
 	copyImageWithoutBorder(backgroundImage, synthesizedImage, m_nBorder/2);
 
@@ -344,16 +337,6 @@ bool Synthesizer::checkSurrounding(int x, int y,
 				}
 			}
 		}
-
-	/*	//check if there is a painted texton somewhere that we may overlap
-		for (int i = 0; i < t->getTextonImg()->width; i++){
-			for (int j = 0, jtextonStep = 0; j < t->getTextonImg()->height; j++, jtextonStep += textonStep) 
-			{
-				pSynthData[(j+y)*synthStep+(i+x)*3+0] = 50;
-				pSynthData[(j+y)*synthStep+(i+x)*3+1] = 50;
-				pSynthData[(j+y)*synthStep+(i+x)*3+2] = 50;
-			}
-		}*/
 	}
 	else {
 		int maxWidth = MIN(x + t->getTextonImg()->width + nArea, synthesizedImage->width);
@@ -423,6 +406,7 @@ void Synthesizer::synthesizeImage(vector<Cluster> &clusterList, IplImage * synth
 	int x = synthesizedImage->width / 2;
 	int y = synthesizedImage->height / 2;
 
+	checkSurrounding(x,y, firstTexton, synthesizedImage);
 	insertTexton(x, y, firstTexton->getTextonImg(), synthesizedImage);
 	vector<CoOccurences>* co = firstTexton->getCoOccurences();
 
@@ -466,6 +450,7 @@ void Synthesizer::synthesizeImage(vector<Cluster> &clusterList, IplImage * synth
 				//in order to maintain a fair share for each texton
 				texton->addAppereance();
 				clusterList[co[ico].nCluster].m_textonList.sort(SortTextonsPredicate);
+
 			}
 		}
 

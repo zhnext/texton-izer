@@ -37,7 +37,7 @@ int main(int argc, char ** argv)
 	int nCurCluster = 0;
 
 	if (argc <= 1 || (argc > 2 && argc % 2 == 0)) {
-	  std::cout << "Usage: texturesynth -i image_file_path -o [output_path] -w [new_width] -h [new_height] -cn [cluster_number] -mts [minimum texton size]" << std::endl;
+	  std::cout << "Usage: texturesynth -i image_file_path -o [output_path] -w [new_width] -h [new_height] -cn [cluster_number] -mts [minimum_texton_size]" << std::endl;
 	  return (-1);
 	}
 
@@ -46,6 +46,7 @@ int main(int argc, char ** argv)
 	int nNewWidth = 0;
 	int nNewHeight = 0;
 	char *strOutPath = "";
+	char *strInputImage = "";
 
 	if (argc == 2) {
 		pInputImage = cvLoadImage(argv[1], 1);
@@ -57,6 +58,7 @@ int main(int argc, char ** argv)
 	else {
 		for (int i = 1; i < argc; i+=2) {
 			if (!strcmp(argv[i], "-i")){
+				strInputImage = argv[i+1];
 				pInputImage = cvLoadImage(argv[i+1], 1);
 				if (pInputImage == NULL){
 					std::cout << "The picture " << argv[i+1] << " could not be loaded." << std::endl;
@@ -120,7 +122,7 @@ int main(int argc, char ** argv)
 	printf("Synthesizer diff time = %ld, %d seconds\n", time2 - time1, t2 - t1);
 
 
-	std::string s(argv[1]);
+	std::string s(strInputImage);
 	s += "_result.jpg";
 	sprintf_s(filename, 255,s.c_str());
 	cvNamedWindow( filename, 1 );

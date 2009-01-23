@@ -598,16 +598,10 @@ void Textonator::retrieveTextonCoOccurences(int nCluster, int nOffsetCurTexton, 
 										continue;
 
 									bool isInList = false;
-									/*Occurence tempO(pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i], nCurrentCluster);
-									if (std::find(Occurences.begin(), Occurences.end(), tempO) != Occurences.end()){
-										printf("(%d,%d)\n", pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i], nCurrentCluster);
-										isInList = true;
-									}*/
-
+	
 									for (unsigned int c = 0; c < Occurences.size(); c++){
 										if (Occurences[c].m_nTexton == pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i]
 										&& Occurences[c].m_nCluster == nCurrentCluster)
-											//printf("(%d,%d)\n", pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i], nCurrentCluster);
 											isInList = true;
 									}
 
