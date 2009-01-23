@@ -224,6 +224,14 @@
 			>
 		</File>
 		<File
+			RelativePath=".\src\ColorUtils.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\src\ColorUtils.h"
+			>
+		</File>
+		<File
 			RelativePath=".\src\defs.h"
 			>
 		</File>

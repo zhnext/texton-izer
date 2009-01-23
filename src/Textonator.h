@@ -48,9 +48,6 @@ public:
 
 private:
 	
-	void	colorWindow(int x, int y, int sizeX, int sizeY);
-	void	recolorPixel(uchar * pData, int y, int x, int step, CvScalar * pColor);
-
 	void	segment();
 	void	cluster(CFeatureExtraction *pFeatureExtractor);
 
