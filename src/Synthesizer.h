@@ -14,6 +14,7 @@ using std::list;
 #define MAXIMUM_TEXTON_OVERLAP	8
 
 #define RESULT_BG_COLOR			cvScalarAll(5)
+#define RESULT_DILATION_COLOR	cvScalarAll(50)
 #define IMG_BORDER				50
 
 /**

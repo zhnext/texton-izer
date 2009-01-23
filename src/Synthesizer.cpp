@@ -88,9 +88,9 @@ void Synthesizer::copyImageWithoutBackground(IplImage * src, IplImage * dst)
 
 	for (int i = 0; i < src->width; i++){
 		for (int j = 0; j < src->height; j++) {
-			if ((pSrcData[j*srcStep+i*3+0] != m_resultBgColor.val[0] && pSrcData[j*srcStep+i*3+0] != 50)||
-				(pSrcData[j*srcStep+i*3+1] != m_resultBgColor.val[1] && pSrcData[j*srcStep+i*3+1] != 50) ||
-				(pSrcData[j*srcStep+i*3+2] != m_resultBgColor.val[2] && pSrcData[j*srcStep+i*3+2] != 50)){
+			if ((pSrcData[j*srcStep+i*3+0] != m_resultBgColor.val[0] && pSrcData[j*srcStep+i*3+0] != RESULT_DILATION_COLOR.val[0])||
+				(pSrcData[j*srcStep+i*3+1] != m_resultBgColor.val[1] && pSrcData[j*srcStep+i*3+1] != RESULT_DILATION_COLOR.val[1]) ||
+				(pSrcData[j*srcStep+i*3+2] != m_resultBgColor.val[2] && pSrcData[j*srcStep+i*3+2] != RESULT_DILATION_COLOR.val[2])){
 					pDstData[j*dstStep+i*3+0] = pSrcData[j*srcStep+i*3+0];
 					pDstData[j*dstStep+i*3+1] = pSrcData[j*srcStep+i*3+1];
 					pDstData[j*dstStep+i*3+2] = pSrcData[j*srcStep+i*3+2];
@@ -128,6 +128,7 @@ void Synthesizer::removeNonconformingTextons(vector<Cluster> &clusterList)
 		}
 
 		nDilationAvg = nDilationAvg / cluster.m_nClusterSize;
+		printf("nDilationAvg=%lf\n", nDilationAvg);
 
 		if (nDilationAvg > AVG_DILATION_ERROR) 
 		{
@@ -353,13 +354,8 @@ bool Synthesizer::checkSurrounding(int x, int y,
 			}
 		}
 
-		for (int i = MAX(x - nArea, 0) ; i < maxWidth; i++){
-			for (int j = MAX(y - nArea, 0); j < maxHeight; j++) {
-				pSynthData[j*synthStep+i*3+0] = 50;
-				pSynthData[j*synthStep+i*3+1] = 50;
-				pSynthData[j*synthStep+i*3+2] = 50;
-			}
-		}
+		cvCircle(synthesizedImage, cvPoint(x + t->getTextonImg()->width/2,y + t->getTextonImg()->width/2), 
+			nArea + t->getTextonImg()->width/2, RESULT_DILATION_COLOR, -1);
 	}
 
 	return true;
@@ -413,6 +409,15 @@ void Synthesizer::synthesizeImage(vector<Cluster> &clusterList, IplImage * synth
 	CoOccurenceQueueItem item(x,y,co);
 	coQueue.push_back(item);
 
+
+	char filename[255];
+	sprintf_s(filename, 255,"17.jpg");
+	cvNamedWindow( filename, 1 );
+	cvShowImage( filename, synthesizedImage );
+	cvSaveImage(filename,synthesizedImage);
+	cvWaitKey(0);
+	cvDestroyWindow(filename);
+
 	int nCount = 0;
 	//go through all the textons co-occurences and build the image with them
 	while (coQueue.size() > 0) {
@@ -451,6 +456,12 @@ void Synthesizer::synthesizeImage(vector<Cluster> &clusterList, IplImage * synth
 				texton->addAppereance();
 				clusterList[co[ico].nCluster].m_textonList.sort(SortTextonsPredicate);
 
+				sprintf_s(filename, 255,"1.jpg");
+				cvNamedWindow( filename, 1 );
+				cvShowImage( filename, synthesizedImage );
+				cvSaveImage(filename,synthesizedImage);
+				cvWaitKey(0);
+				cvDestroyWindow(filename);
 			}
 		}
 
