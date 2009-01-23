@@ -17,7 +17,7 @@ int SBox::getPositionMask(IplImage *pImg)
 
 Texton::Texton(IplImage * textonImg, int nCluster, int positionMask,SBox& box):
 m_textonImg(textonImg), m_nCluster(nCluster),m_positionMask(positionMask),
-m_box(box),m_nDilation(0),m_nAppereances(0),m_fImageFilling(false)
+m_box(box),m_nDilation(0),m_nAppereances(0),m_fImageBackground(false)
 {}
 
 Texton::~Texton(){}
@@ -42,7 +42,7 @@ void Texton::addAppereance()
 	m_nAppereances++;
 }
 
-void Texton::setImageFilling()
+void Texton::setImageBackground()
 {
-	m_fImageFilling = true;
+	m_fImageBackground = true;
 }

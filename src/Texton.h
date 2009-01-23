@@ -60,15 +60,15 @@ public:
 	Texton(IplImage * textonImg, int nCluster, int positionMask, SBox& box);
 	virtual ~Texton();
 
-	const IplImage* getTextonImg() const		{ return m_textonImg; }
+	 IplImage* getTextonImg() const		{ return m_textonImg; }
 	int				getClusterNumber() const	{ return m_nCluster; }
 	int				getPosition() const			{ return m_positionMask; }		
 	SBox			getBoundingBox() const		{ return m_box; }
 	vector<CoOccurences>* getCoOccurences()		{ return &m_coOccurences; }
 	int				getDilationArea() const		{ return m_nDilation; }
-	bool			isImageFilling() const		{ return m_fImageFilling; }
+	bool			isImageBackground() const		{ return m_fImageBackground; }
 
-	void			setImageFilling();
+	void			setImageBackground();
 	void			setCoOccurences(vector<CoOccurences> coOccurences);
 	void			setDilationArea(int nDilation);
 
@@ -77,7 +77,7 @@ public:
 	bool			operator<(const Texton& right) const;
 
 private:
-	bool		m_fImageFilling;
+	bool		m_fImageBackground;
 	IplImage*	m_textonImg;
 	int			m_nCluster;
 	int			m_positionMask;

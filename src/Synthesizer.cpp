@@ -106,7 +106,7 @@ void Synthesizer::removeBorderTextons(vector<Cluster>& clusterList)
 		list<Texton*>::iterator iter = curCluster.m_textonList.begin();
 		while (iter != curCluster.m_textonList.end()){
 			//find a suitable texton
-			if ((*iter)->getPosition() == Texton::NON_BORDER && !(*iter)->isImageFilling())
+			if ((*iter)->getPosition() == Texton::NON_BORDER && !(*iter)->isImageBackground())
 				iter++;
 			else{
 				iter = curCluster.m_textonList.erase(iter);
@@ -153,10 +153,12 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList, IplImag
 	// Finds the cluster in which the image filling texton resides
 	int nBackgroundCluster = -1;
 	for (unsigned int i = 0; i < clusterList.size(); i++) {
-		if (clusterList[i].isImageFilling())
+		if (clusterList[i].isImageBackground())
 			nBackgroundCluster = i;
 	}
 
+	IplImage * backgroundImage = cvCreateImage(cvSize(img->width,img->height), img->depth, img->nChannels);
+	cvSet(backgroundImage, cvScalarAll(0));
 	Texton * t = NULL;
 	if (nBackgroundCluster >= 0) {
 		// Find the image filling texton
@@ -164,49 +166,86 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList, IplImag
 			iter != clusterList[nBackgroundCluster].m_textonList.end(); 
 			iter++)
 		{
-			if ((*iter)->isImageFilling())
+			if ((*iter)->isImageBackground())
 			{
 				t = *iter;
 				break;
 			}
 		}
-	}
-	else
-		//pick a random texton color
-		t = clusterList[0].m_textonList.front();
 
-	IplImage * backgroundImage = cvCreateImage(cvSize(img->width,img->height), img->depth, img->nChannels);
-	const IplImage * textonImage = t->getTextonImg();
+		IplImage * bgTexton = t->getTextonImg();
 
-	int backgroundStep = backgroundImage->widthStep;
-	uchar * pBackgroundData  = reinterpret_cast<uchar *>(backgroundImage->imageData);
+		int textonStep = bgTexton->widthStep;
+		int backgroundStep = backgroundImage->widthStep;
 
-	int textonStep = textonImage->widthStep;
-	uchar * pTextonData  = reinterpret_cast<uchar *>(textonImage->imageData);
+		uchar * pTextonData  = reinterpret_cast<uchar *>(bgTexton->imageData);
+		uchar * pBackgroundData  = reinterpret_cast<uchar *>(backgroundImage->imageData);
 
-	// Use image filling texton to generate background image.
-	// Select a random coordinate each time and add it to the image if appropriate.
-	for (int i = 0; i < backgroundImage->width; i++){
-		for (int j = 0; j < backgroundImage->height; j++) {
-			while (true) {
-				int randomX = rand() % textonImage->width;
-				int randomY = rand() % textonImage->height;
+		int radius = 10;
+		int a = 0;
+		int b = 0;
+		bool fColored = false;
 
-				if (pTextonData[randomY*textonStep+randomX*3+0] == m_textonBgColor.val[0] &&
-					pTextonData[randomY*textonStep+randomX*3+1] == m_textonBgColor.val[1] &&
-					pTextonData[randomY*textonStep+randomX*3+2] == m_textonBgColor.val[2])
-					continue;
-				else {
-					pBackgroundData[j*backgroundStep+i*3+0] = pTextonData[randomY*textonStep+randomX*3+0];
-					pBackgroundData[j*backgroundStep+i*3+1] = pTextonData[randomY*textonStep+randomX*3+1];
-					pBackgroundData[j*backgroundStep+i*3+2] = pTextonData[randomY*textonStep+randomX*3+2];
-					break;
+		while (true) {
+			//If the pixel is already colored, we don't activate the algorithm on it
+			if (pBackgroundData[b*backgroundStep+a*3+0] != 0 ||
+				pBackgroundData[b*backgroundStep+a*3+1] != 0 ||
+				pBackgroundData[b*backgroundStep+a*3+2] != 0) {
+				a++;
+				if (a >= backgroundImage->width){
+					a = 0;
+					b++;
+					if (b >= backgroundImage->height)
+						break;
+				}
+
+				continue;
+			}
+
+			//Clone the target texton to a temporary one in order to apply a circle on it
+			IplImage* tempImg = cvCloneImage( bgTexton );
+			int tempimgStep = tempImg->widthStep;
+			uchar * pTempImgData  = reinterpret_cast<uchar *>(tempImg->imageData);
+			
+			int x = rand() % (tempImg->width - 2*radius) + radius;
+			int y = rand() % (tempImg->height - 2*radius) + radius;
+
+			cvCircle(tempImg, cvPoint(x,y), radius, cvScalarAll(1), -1);
+
+			//Extract all the circled area of the texton to the background
+			int aa = a - radius;
+			for (int i = (x - 10); i < (x + 10); i++, aa++){
+				int bb = b - radius;
+				for (int j = (y - 10); j < (y + 10); j++, bb++) {
+					if (pTextonData[j*textonStep+i*3+0] == m_textonBgColor.val[0] &&
+						pTextonData[j*textonStep+i*3+1] == m_textonBgColor.val[1] &&
+						pTextonData[j*textonStep+i*3+2] == m_textonBgColor.val[2])
+						continue;
+
+					if (pTempImgData[j*tempimgStep+i*3+0] == 1 &&
+						pTempImgData[j*tempimgStep+i*3+1] == 1 &&
+						pTempImgData[j*tempimgStep+i*3+2] == 1){
+							if (bb >= backgroundImage->height || aa >= backgroundImage->width)
+								continue;
+							if (bb < 0 || aa < 0)
+								continue;
+
+							pBackgroundData[bb*backgroundStep+aa*3+0] = pTextonData[j*textonStep+i*3+0];
+							pBackgroundData[bb*backgroundStep+aa*3+1] = pTextonData[j*textonStep+i*3+1];
+							pBackgroundData[bb*backgroundStep+aa*3+2] = pTextonData[j*textonStep+i*3+2];
+
+							fColored = true;
+					}
 				}
 			}
+
+			//We have not colored anything, probably due to small texton
+			if (!fColored)
+				radius--;
+
+			cvReleaseImage(&tempImg);
 		}
 	}
-
-	cvSmooth(backgroundImage, backgroundImage, CV_BLUR);
 
 	return backgroundImage;
 }
@@ -227,12 +266,19 @@ IplImage* Synthesizer::synthesize(int nNewWidth, int nNewHeight, int depth,
 
 	/* Remove unnecessary textons */
 	//Remove all textons that are "too-close" according to the dilation average
-	//removeNonconformingTextons(clusterList);
+	removeNonconformingTextons(clusterList);
 	//Remove all textons that touch a border
 	removeBorderTextons(clusterList);
 
 	/* Synthesize the image using the given clusters */
 	synthesizeImage(clusterList, tempSynthesizedImage);
+
+	char filename[255];
+	strcpy(filename, "bl");
+	cvNamedWindow( filename, 1 );
+	cvShowImage( filename, backgroundImage );
+	cvWaitKey(0);
+	cvDestroyWindow(filename);
 
 	copyImageWithoutBackground(tempSynthesizedImage, backgroundImage);
 	copyImageWithoutBorder(backgroundImage, synthesizedImage, m_nBorder/2);
@@ -244,7 +290,7 @@ IplImage* Synthesizer::synthesize(int nNewWidth, int nNewHeight, int depth,
 
 	return synthesizedImage;
 }
-
+ 
 bool Synthesizer::checkSurrounding(int x, int y, 
 								   Texton* t, 
 								   IplImage* synthesizedImage)
@@ -390,7 +436,6 @@ void Synthesizer::synthesizeImage(vector<Cluster> &clusterList, IplImage * synth
 		vector<CoOccurences> co = *(curItem.m_co);
 
 		for (unsigned int ico = 0; ico < co.size(); ico++){
-			//printf("co[ico].distX=%d,co[ico].distY=%d\n", co[ico].distX, co[ico].distY);
 			Cluster& curCluster = clusterList[co[ico].nCluster];
 			int nNewX = curItem.m_x + co[ico].distX;
 			int nNewY = curItem.m_y + co[ico].distY;

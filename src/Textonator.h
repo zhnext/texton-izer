@@ -21,7 +21,7 @@ using std::vector;
 #define UNDEFINED			-1
 
 #define MAX_DILATIONS		100
-#define EXTRA_DILATIONS		30
+#define EXTRA_DILATIONS		100
 
 class Occurence
 {
