@@ -1,4 +1,5 @@
 #include "Textonator.h"
+#include "ColorUtils.h"
 #include "defs.h"
 
 Textonator::Textonator(IplImage * Img, int nClusters, int nMinTextonSize):
@@ -32,8 +33,6 @@ void Textonator::blurImage()
 										m_pImg->nChannels);
 
 	//gaussian blur (5x5) the image, to smooth out the texture while preserving edge information
-	//cvPyrUp(m_pOutImg, pPyrImg, CV_GAUSSIAN_5x5);
-	//cvPyrDown(pPyrImg, m_pOutImg, CV_GAUSSIAN_5x5);
 	cvSmooth(m_pOutImg, m_pOutImg);
 
 	cvReleaseImage(&pPyrImg);
@@ -101,18 +100,6 @@ void Textonator::cluster(CFeatureExtraction *pFeatureExtractor)
   cvReleaseMat(&pChannels);
 }
 
-void Textonator::recolorPixel(uchar * pData, 
-							  int y, 
-							  int x, 
-							  int step, 
-							  CvScalar * pColor)
-{
-	pData[y*step+x*3+0] = (uchar)pColor->val[0];
-	pData[y*step+x*3+1] = (uchar)pColor->val[1];
-	pData[y*step+x*3+2] = (uchar)pColor->val[2];
-}
-
-
 void Textonator::colorCluster(int nCluster)
 {
   uchar * pData  = (uchar *)m_pOutImg->imageData;
@@ -122,7 +109,7 @@ void Textonator::colorCluster(int nCluster)
   for (int i=0; i<m_pImg->height; i++){
       for (int j=0; j<m_pImg->width; j++) {
           if (m_pClusters->data.i[i*m_pImg->width+j] != nCluster) {
-            recolorPixel(pData, i,j, m_pImg->widthStep, &color);
+            ColorUtils::recolorPixel(pData, i,j, m_pImg->widthStep, &color);
           }
 	  }
   }
@@ -295,7 +282,7 @@ void Textonator::retrieveTextons(int nClusterSize,
 					nCount++;
 				}
 				else {
-					recolorPixel(pData, j, i, m_pOutImg->widthStep, &m_bgColor);
+					ColorUtils::recolorPixel(pData, j, i, m_pOutImg->widthStep, &m_bgColor);
 				}
 			}
 		}
@@ -360,7 +347,7 @@ void Textonator::extractTexton(int minX,
 			color.val[1] = pImageData[j*step+i*3+1];
 			color.val[2] = pImageData[j*step+i*3+2];
 
-			recolorPixel(pImData, j - minY, i - minX, pTexton->widthStep, &color);
+			ColorUtils::recolorPixel(pImData, j - minY, i - minX, pTexton->widthStep, &color);
 		}
 	}
 }
@@ -522,42 +509,6 @@ void Textonator::extractTextons(int nCluster, vector<Cluster>& clusterList, int 
 	assignStrayPixels(pTextonMap, nSize);
 
 	retrieveTextons(nClusterSize, nCluster, pTextonMap, clusterList);
-}
-
-void Textonator::colorWindow(int x, int y, int sizeX, int sizeY)
-{
-  uchar * pData  = (uchar *)m_pOutImg->imageData;
-  uchar * pData2  = (uchar *)m_pImg->imageData;
-  CvScalar color;
-  int step = m_pImg->widthStep;
-
-  //copy the original image data to our buffer
-  memcpy(pData, (uchar *)m_pImg->imageData, m_pImg->imageSize);
-
-  color.val[0] = 200;
-  color.val[1] = 0;
-  color.val[2] = 0;
-
-
-  for (int i=x; i<x+sizeX; i++)
-  {
-	  recolorPixel(pData, y,i, step, &color);
-	  recolorPixel(pData, y+1,i, step, &color);
-
-	  recolorPixel(pData, y+sizeY,i, step, &color);
-	  if (y+sizeY+1 < m_pImg->height)
-		recolorPixel(pData, y+sizeY+1,i, step, &color);
-  }
-
-  for (int j=y; j<y+sizeY; j++) 
-  {
-	  recolorPixel(pData, j,x, step, &color);
-	  recolorPixel(pData, j,x+1, step, &color);
-
-	  recolorPixel(pData, j,x+sizeX, step, &color);
-	  if (x+sizeX+1 < m_pImg->height)
-		  recolorPixel(pData, j,x+sizeX + 1, step, &color);
-  }
 }
 
 void Textonator::retrieveTextonCoOccurences(int nCluster, int nOffsetCurTexton, vector<Occurence>& Occurences, CvScalar& bg, uchar * pData,vector<int*> pTextonMapList, vector<Cluster>& clusterList)
@@ -735,11 +686,11 @@ void Textonator::computeCoOccurences(vector<int*> pTextonMapList, vector<Cluster
 			for (int i = 0; i < m_pOutImg->width; i++){
 				for (int j = 0; j < m_pOutImg->height; j++) {
 					if (pTextonMapList[nCluster][j * m_pOutImg->width + i] != nOffsetCurTexton){
-						recolorPixel(pData, j, i, m_pOutImg->widthStep, &bg);
+						ColorUtils::recolorPixel(pData, j, i, m_pOutImg->widthStep, &bg);
 					}
 					else {
 						//Dilation finds the maximum over a local neighborhood, so let the texton be that maximum
-						recolorPixel(pData, j, i, m_pOutImg->widthStep, &white_bg);
+						ColorUtils::recolorPixel(pData, j, i, m_pOutImg->widthStep, &white_bg);
 					}
 				}
 			}
