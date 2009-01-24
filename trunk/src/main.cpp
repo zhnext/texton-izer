@@ -10,21 +10,20 @@ void showTextons(vector<Cluster>& clusterList, char *strOutPath)
 	//save the textons
 	for (unsigned int i = 0; i < clusterList.size(); i++) {
 		Cluster cluster = clusterList[i];
-		for (int j = 0; j < cluster.m_nClusterSize; j++){
-			list<Texton*> tList = cluster.m_textonList;
-			for (list<Texton*>::iterator iter = tList.begin(); iter != tList.end(); iter++) {
-				sprintf_s(filename, 255,"%sCluster_%d_Texton_%d.jpg", strOutPath, (*iter)->getClusterNumber(), j);
+		list<Texton*> tList = cluster.m_textonList;
+		int n = 1;
+		for (list<Texton*>::iterator iter = tList.begin(); iter != tList.end(); iter++) {
+			sprintf_s(filename, 255,"%sCluster_%d_Texton_%d.jpg", strOutPath, (*iter)->getClusterNumber(), n);
 
-
-				printf("texton position = %d\n", (*iter)->getPosition());
-
-				cvNamedWindow( filename, 1 );
-				cvShowImage( filename, (*iter)->getTextonImg() );
-				cvWaitKey(0);
-				cvDestroyWindow(filename);
-				//cvSaveImage(filename,t->getTextonImg());
-
+			if ((*iter)->isImageBackground()){
+			//printf("isBackground=%d\n", (*iter)->isImageBackground());
+			cvNamedWindow( filename, 1 );
+			cvShowImage( filename, (*iter)->getTextonImg() );
+			cvWaitKey(0);
+			cvDestroyWindow(filename);
 			}
+			//cvSaveImage(filename,t->getTextonImg());
+			n++;
 		}
 	}
 }
@@ -37,7 +36,9 @@ int main(int argc, char ** argv)
 	int nCurCluster = 0;
 
 	if (argc <= 1 || (argc > 2 && argc % 2 == 0)) {
-	  std::cout << "Usage: texturesynth -i image_file_path -o [output_path] -w [new_width] -h [new_height] -cn [cluster_number] -mts [minimum_texton_size]" << std::endl;
+	  std::cout << "Usage: texturesynth -i image_file_path -o [output_path]" << 
+		  "-w [new_width] -h [new_height] -cn [cluster_number] "<<
+		  "-mts [minimum_texton_size] -bpx [background_pixel_x] -bpy [background_pixel_y]" << std::endl;
 	  return (-1);
 	}
 
@@ -47,6 +48,7 @@ int main(int argc, char ** argv)
 	int nNewHeight = 0;
 	char *strOutPath = "";
 	char *strInputImage = "";
+	CvScalar backgroundPixel = cvScalarAll(UNDEFINED);
 
 	if (argc == 2) {
 		pInputImage = cvLoadImage(argv[1], 1);
@@ -80,6 +82,12 @@ int main(int argc, char ** argv)
 			else if (!strcmp(argv[i], "-mts")){
 				nMinTextonSize = atoi(argv[i+1]);
 			}
+			else if (!strcmp(argv[i], "-bpx")){
+				backgroundPixel.val[0] = atoi(argv[i+1]);
+			}
+			else if (!strcmp(argv[i], "-bpy")){
+				backgroundPixel.val[1] = atoi(argv[i+1]);
+			}
 			else {
 				std::cout << "Unknown argument ("<< argv[i] <<"). Aborting..." << std::endl;
 				return (-1);
@@ -105,7 +113,7 @@ int main(int argc, char ** argv)
 
 	time_t t1 = time(NULL);
 	DWORD time1 = GetTickCount();
-	Textonator * textonator = new Textonator(pInputImage, nClusters, nMinTextonSize);
+	Textonator * textonator = new Textonator(pInputImage, nClusters, nMinTextonSize, backgroundPixel);
 	textonator->textonize(clusterList);
 	DWORD time2 = GetTickCount();
 	time_t t2 = time(NULL);
