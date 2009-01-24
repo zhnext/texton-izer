@@ -103,6 +103,10 @@ int main(int argc, char ** argv)
 		std::cout << "New height argument was not given. Resetting to default height..." << std::endl;
 		nNewHeight = pInputImage->height;
 	}
+	if(backgroundPixel.val[0] != UNDEFINED) {
+		std::cout << "bpx = " << backgroundPixel.val[0] << std::endl;
+		std::cout << "bpy = " << backgroundPixel.val[1] << std::endl;
+	}
 
 	char filename[255];
 	sprintf_s(filename, 255,"Original Image");
@@ -129,10 +133,9 @@ int main(int argc, char ** argv)
 	t2 = time(NULL);
 	printf("Synthesizer diff time = %ld, %d seconds\n", time2 - time1, t2 - t1);
 
-
-	std::string s(strInputImage);
-	s += "_result.jpg";
-	sprintf_s(filename, 255,s.c_str());
+	sprintf_s(filename, 255, 
+		"%s_cn[%d]_mts[%d]_bpx[%.0f]_bpy[%.0f]_result.jpg", 
+		strInputImage, nClusters, nMinTextonSize, backgroundPixel.val[0], backgroundPixel.val[1]);
 	cvNamedWindow( filename, 1 );
 	cvShowImage( filename, result );
 	cvSaveImage(filename,result);
