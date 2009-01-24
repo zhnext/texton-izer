@@ -326,7 +326,7 @@ void Textonator::retrieveTextons(int nClusterSize,
 
 		// if the cluster is known as background or is as big as the picture, 
 		//it is considered background
-		if (//fBackgroundCluster || 
+		if (fBackgroundCluster || 
 			xSize >= m_pImg->width - 10 || 
 			ySize >= m_pImg->height - 10){
 			cluster.setImageBackground();
