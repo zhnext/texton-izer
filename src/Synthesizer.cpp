@@ -177,7 +177,7 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList,
 	IplImage * backgroundImage = cvCreateImage(cvSize(img->width,img->height), 
 												img->depth, 
 												img->nChannels);
-	CvScalar bgColor = cvScalarAll(0);
+	CvScalar bgColor = cvScalarAll(1);
 	cvSet(backgroundImage, bgColor);
 	Texton * t = NULL;
 	if (nBackgroundCluster >= 0) {

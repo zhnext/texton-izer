@@ -21,7 +21,7 @@ using std::vector;
 #define UNDEFINED			-1
 
 #define MAX_DILATIONS		100
-#define EXTRA_DILATIONS		80
+#define EXTRA_DILATIONS		60
 
 class Occurence
 {
@@ -41,7 +41,7 @@ public:
 class Textonator
 {
 public:
-	Textonator(IplImage * Img, int nClusters, int nMinTextonSize);
+	Textonator(IplImage * Img, int nClusters, int nMinTextonSize, CvScalar& backgroundPixel);
 	virtual ~Textonator();
 
 	void	textonize(vector<Cluster>& clusterList);
@@ -69,10 +69,11 @@ private:
 	/**
 	 * Create a texton map of the current cluster
 	 * @param nCluster the current cluster
+	 * @param fBackgroundCluster [out] is the cluster a background cluster
 	 * @param pTextonMap the result texton map
 	 * @return the number of textons we colored
 	 **/
-	int		scanForTextons(int nCluster, int * pTextonMap);
+	int		scanForTextons(int nCluster, bool& fBackgroundCluster, int * pTextonMap);
 
 	/**
 	 * Color a texton "map" based on the clustering:
@@ -97,7 +98,7 @@ private:
 	 * @param nTexton the current texton
 	 **/
 	void	assignTextons(int x, int y, uchar * pData, int * pTextonMap, int nTexton);
-	void	retrieveTextons(int nTexton, int nCluster, int * pTextonMap, vector<Cluster>& clusterList);
+	void	retrieveTextons(int nTexton, int nCluster, bool fBackgroundCluster, int * pTextonMap, vector<Cluster>& clusterList);
 	
 	/**
 	 * Assign all the remaining untextoned pixels the closest texton
@@ -155,6 +156,7 @@ private:
 	int			m_nCurTextonSize;
 
 	CvScalar	m_bgColor;
+	CvScalar	m_backgroundPixel;
 	
 };
 

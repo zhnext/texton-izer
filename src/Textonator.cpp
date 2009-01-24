@@ -2,8 +2,8 @@
 #include "ColorUtils.h"
 #include "defs.h"
 
-Textonator::Textonator(IplImage * Img, int nClusters, int nMinTextonSize):
-m_pImg(Img),m_nClusters(nClusters),m_nMinTextonSize(nMinTextonSize)
+Textonator::Textonator(IplImage * Img, int nClusters, int nMinTextonSize, CvScalar& backgroundPixel):
+m_pImg(Img),m_nClusters(nClusters),m_nMinTextonSize(nMinTextonSize),m_backgroundPixel(backgroundPixel)
 {
 	m_pOutImg = cvCreateImage(cvSize(m_pImg->width,m_pImg->height),
 								m_pImg->depth,
@@ -195,7 +195,7 @@ void Textonator::colorTextonMap(uchar *pBorderData, int * pTextonMap, int nClust
   }
 }
 
-int Textonator::scanForTextons(int nCluster, int * pTextonMap)
+int Textonator::scanForTextons(int nCluster, bool &fBackgroundCluster, int * pTextonMap)
 {
 	uchar * pData  = (uchar *) m_pOutImg->imageData;
 	uchar * pBorderData  = (uchar *) m_pSegmentBoundaries->imageData;
@@ -206,6 +206,14 @@ int Textonator::scanForTextons(int nCluster, int * pTextonMap)
 	colorTextonMap(pBorderData, pTextonMap, nCluster);
 
 	int nTexton = FIRST_TEXTON_NUM;
+
+	//Check if its a background cluster
+	if (m_backgroundPixel.val[0] != UNDEFINED && 
+		m_backgroundPixel.val[1] != UNDEFINED){
+		int pos = (int)m_backgroundPixel.val[1]*m_pOutImg->width+(int)m_backgroundPixel.val[0];
+		if (pTextonMap[pos] == UNCLUSTERED_DATA)
+			fBackgroundCluster = true;
+	}
 
 	// For each pixel perform a flood fill with the value of the current texton
 	// Each time we find a texton advance the texton count
@@ -218,12 +226,14 @@ int Textonator::scanForTextons(int nCluster, int * pTextonMap)
 
 				m_nCurTextonSize = 0;
 
-				// TODO: Why do we need pData here ?
 				assignTextons(i,j, pData, pTextonMap, nTexton);
 				
+				if (fBackgroundCluster)
+					continue;
+
 				// Check if our texton is large enough
 				if (m_nCurTextonSize > m_nMinTextonSize){
-					nTexton++;
+						nTexton++;
 					//printf("\t(Texton #%d) i=%d,j=%d, Size=%d\n", 
 					//		nTexton - FIRST_TEXTON_NUM, i, j, m_nCurTextonSize);
 				}
@@ -242,11 +252,15 @@ int Textonator::scanForTextons(int nCluster, int * pTextonMap)
 		} 
 	}
 
-	return (nTexton - FIRST_TEXTON_NUM);
+	if (fBackgroundCluster)
+		return 1;
+	else
+		return (nTexton - FIRST_TEXTON_NUM);
 }
 
 void Textonator::retrieveTextons(int nClusterSize, 
 								 int nCluster, 
+								 bool fBackgroundCluster,
 								 int * pTextonMap, 
 								 vector<Cluster>& clusterList)
 {
@@ -287,6 +301,7 @@ void Textonator::retrieveTextons(int nClusterSize,
 			}
 		}
 
+		
 		// Create bounding box with the size of the texton
 		SBox boundingBox(minX, minY, maxX, maxY);
 
@@ -309,12 +324,11 @@ void Textonator::retrieveTextons(int nClusterSize,
 								boundingBox.getPositionMask(m_pImg), 
 								boundingBox);
 
-		////
-		////
-		//BEWARE: HEURISTCS
-		////
-		////
-		if (xSize >= m_pImg->width - 10 || ySize >= m_pImg->height - 10){
+		// if the cluster is known as background or is as big as the picture, 
+		//it is considered background
+		if (//fBackgroundCluster || 
+			xSize >= m_pImg->width - 10 || 
+			ySize >= m_pImg->height - 10){
 			cluster.setImageBackground();
 			t->setImageBackground();
 		}
@@ -493,6 +507,7 @@ void Textonator::assignRemainingData(int * pTextonMap)
 
 void Textonator::extractTextons(int nCluster, vector<Cluster>& clusterList, int * pTextonMap)
 {
+	bool fBackgroundCluster = false;
 	printf("* Extracting textons from cluster #%d...\n", nCluster);
 
 	//initialize the texton map
@@ -500,7 +515,7 @@ void Textonator::extractTextons(int nCluster, vector<Cluster>& clusterList, int 
 	memset(pTextonMap, 0, nSize*sizeof(int));
 
 	// Extract textons from cluster
-	int nClusterSize = scanForTextons(nCluster, pTextonMap);
+	int nClusterSize = scanForTextons(nCluster, fBackgroundCluster, pTextonMap);
 
 	//assign all the remaining untextoned pixels the closest texton
 	assignRemainingData(pTextonMap);
@@ -508,7 +523,7 @@ void Textonator::extractTextons(int nCluster, vector<Cluster>& clusterList, int 
 	//assign any lonely pixels that may appear inside a texton and belong to another cluster to that texton
 	assignStrayPixels(pTextonMap, nSize);
 
-	retrieveTextons(nClusterSize, nCluster, pTextonMap, clusterList);
+	retrieveTextons(nClusterSize, nCluster, fBackgroundCluster, pTextonMap, clusterList);
 }
 
 void Textonator::retrieveTextonCoOccurences(int nCluster, int nOffsetCurTexton, vector<Occurence>& Occurences, CvScalar& bg, uchar * pData,vector<int*> pTextonMapList, vector<Cluster>& clusterList)
@@ -524,23 +539,25 @@ void Textonator::retrieveTextonCoOccurences(int nCluster, int nOffsetCurTexton, 
 
 		for (int i = 0; i < m_pOutImg->width; i++){
 			for (int j = 0; j < m_pOutImg->height; j++) {
-				if (pData[j*m_pOutImg->widthStep+i*3+0] != bg.val[0] ||
-					pData[j*m_pOutImg->widthStep+i*3+1] != bg.val[1] ||
-					pData[j*m_pOutImg->widthStep+i*3+2] != bg.val[2]){
-
+				int pos = j*m_pOutImg->widthStep+i*3;
+				CvScalar color = cvScalar(pData[pos],pData[pos+1],
+										pData[pos+2]);
+				if (!ColorUtils::compareColors(color, bg)){
 						//search through the clusters for overlapping textons
 						for (int nCurrentCluster = 0; nCurrentCluster < m_nClusters; nCurrentCluster++){
-
-							if (pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i] < FIRST_TEXTON_NUM)
+							int nCollidingTexton = pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i];
+							if (clusterList[nCurrentCluster].isImageBackground())
 								continue;
 
-							if (pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i] != nOffsetCurTexton ||
-								pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i] == nOffsetCurTexton && 
-								nCurrentCluster != nCluster){
+							if (nCollidingTexton < FIRST_TEXTON_NUM)
+								continue;
+
+							if (nCollidingTexton != nOffsetCurTexton ||
+								nCollidingTexton == nOffsetCurTexton && nCurrentCluster != nCluster){
 
 									//Retrieve texton
 									list<Texton*>::iterator iter = clusterList[nCurrentCluster].m_textonList.begin(); 
-									for (int p = 0; p < pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i] - FIRST_TEXTON_NUM; p++)
+									for (int p = 0; p < nCollidingTexton - FIRST_TEXTON_NUM; p++)
 										iter++;
 
 									Texton * t = *(iter);
@@ -551,7 +568,7 @@ void Textonator::retrieveTextonCoOccurences(int nCluster, int nOffsetCurTexton, 
 									bool isInList = false;
 	
 									for (unsigned int c = 0; c < Occurences.size(); c++){
-										if (Occurences[c].m_nTexton == pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i]
+										if (Occurences[c].m_nTexton == nCollidingTexton
 										&& Occurences[c].m_nCluster == nCurrentCluster)
 											isInList = true;
 									}
@@ -565,7 +582,7 @@ void Textonator::retrieveTextonCoOccurences(int nCluster, int nOffsetCurTexton, 
 										}
 
 										Occurence oc( 
-											pTextonMapList[nCurrentCluster][j * m_pOutImg->width + i],
+											nCollidingTexton,
 											nCurrentCluster,
 											nDilation);
 										Occurences.push_back(oc);
