@@ -244,14 +244,15 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList,
 
 			//Extract all the circled area of the texton to the background
 			int aa = a - radius;
-			for (int i = (x - 10); i < (x + 10); i++, aa++){
+			for (int i = (x - radius); i < (x + radius); i++, aa++){
 				int bb = b - radius;
-				for (int j = (y - 10); j < (y + 10); j++, bb++) {
+				for (int j = (y - radius); j < (y + radius); j++, bb++) {
 					int pos = j*textonStep+i*3;
 					int tempPos = j*tempimgStep+i*3;
 					CvScalar color = cvScalar(pTextonData[pos+0],
 												pTextonData[pos+1],
 												pTextonData[pos+2]);
+					
 					CvScalar tempColor = cvScalar(pTempImgData[tempPos+0],
 													pTempImgData[tempPos+1],
 													pTempImgData[tempPos+2]);
