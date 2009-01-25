@@ -1,7 +1,7 @@
 #include <iostream>
 #include "Textonator.h"
 #include "Synthesizer.h"
-
+#include <shlwapi.h>
 #include <time.h>
 
 void showTextons(vector<Cluster>& clusterList, char *strOutPath)
@@ -133,13 +133,19 @@ int main(int argc, char ** argv)
 	t2 = time(NULL);
 	printf("Synthesizer diff time = %ld, %d seconds\n", time2 - time1, t2 - t1);
 
-	sprintf_s(filename, 255, 
-		"%s_cn[%d]_mts[%d]_bpx[%.0f]_bpy[%.0f]_result.jpg", 
-		strInputImage, nClusters, nMinTextonSize, backgroundPixel.val[0], backgroundPixel.val[1]);
+	if (!strcmp(strOutPath, ""))
+		sprintf_s(filename, 255, 
+			"%s_cn[%d]_mts[%d]_bpx[%.0f]_bpy[%.0f]_result.jpg", 
+			strInputImage, nClusters, nMinTextonSize, backgroundPixel.val[0], backgroundPixel.val[1]);
+	else
+		sprintf_s(filename, 255, 
+		"%s\\cn[%d]_mts[%d]_bpx[%.0f]_bpy[%.0f]_result.jpg", 
+		strOutPath, nClusters, nMinTextonSize, backgroundPixel.val[0], backgroundPixel.val[1]);
+
 	cvNamedWindow( filename, 1 );
 	cvShowImage( filename, result );
 	cvSaveImage(filename,result);
-	cvWaitKey(0);
+//	cvWaitKey(0);
 	cvDestroyWindow(filename);
 
 
