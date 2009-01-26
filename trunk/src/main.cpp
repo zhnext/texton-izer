@@ -51,9 +51,10 @@ int main(int argc, char ** argv)
 	CvScalar backgroundPixel = cvScalarAll(UNDEFINED);
 
 	if (argc == 2) {
-		pInputImage = cvLoadImage(argv[1], 1);
+		strInputImage = argv[1];
+		pInputImage = cvLoadImage(strInputImage, 1);
 		if (pInputImage == NULL){
-			std::cout << "The picture " << argv[1] << " could not be loaded." << std::endl;
+			std::cout << "The picture " << strInputImage << " could not be loaded." << std::endl;
 			return (-1);
 		}
 	}
