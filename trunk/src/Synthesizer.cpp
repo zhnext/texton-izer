@@ -2,7 +2,7 @@
 #include "ColorUtils.h"
 #include "defs.h"
 
-bool SortTextonsPredicate(Texton*& lhs, Texton*& rhs)
+bool SortTextonsByAppereanceNumber(Texton*& lhs, Texton*& rhs)
 {
 	return (*lhs) < (*rhs);
 }
@@ -36,6 +36,7 @@ bool Synthesizer::insertTexton(int x, int y,
 		return false;
 	}
 
+	bool fColored = false;
 	int synthStep = synthesizedImage->widthStep;
 	int textonStep = textonImg->widthStep;
 
@@ -56,14 +57,21 @@ bool Synthesizer::insertTexton(int x, int y,
 					|| i + x >= synthesizedImage->width)
 					return false;
 
-				
-				ColorUtils::recolorPixel(pSynthData, 
-										j+y, i+x, synthStep, &color);
+				int pos = (j+y)*synthStep+(i+x)*3;
+				CvScalar color1 = cvScalar(pSynthData[pos+0],
+					pSynthData[pos+1],
+					pSynthData[pos+2]);
+				if (ColorUtils::compareColors(color1, m_resultBgColor)){
+					ColorUtils::recolorPixel(pSynthData, 
+											j+y, i+x, synthStep, &color);
+					m_nEmptySpots--;
+					fColored = true;
+				}
 			}
 		}
 	}
 
-	return true;
+	return fColored;
 }
 
 void Synthesizer::copyImageWithoutBorder(IplImage * src, 
@@ -180,6 +188,8 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList,
 	CvScalar bgColor = cvScalarAll(1);
 	cvSet(backgroundImage, bgColor);
 	Texton * t = NULL;
+	
+
 	if (nBackgroundCluster >= 0) {
 		// Find the image filling texton
 		for (list<Texton*>::iterator iter = 
@@ -195,6 +205,7 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList,
 		}
 
 		IplImage * bgTexton = t->getTextonImg();
+		int radius = rand() % MIN(t->getTextonImg()->width/2, t->getTextonImg()->height/2);
 
 		int textonStep = bgTexton->widthStep;
 		int backgroundStep = backgroundImage->widthStep;
@@ -203,11 +214,11 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList,
 		uchar * pBackgroundData  = 
 			reinterpret_cast<uchar *>(backgroundImage->imageData);
 
-		int radius = 10;
 		int a = 0;
 		int b = 0;
 		bool fColored = false;
 
+		printf("* Creating background...");
 
 		while (true) {
 			int pos = b*backgroundStep+a*3;
@@ -266,9 +277,18 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList,
 							if (bb < 0 || aa < 0)
 								continue;
 
-							ColorUtils::recolorPixel(pBackgroundData, 
-											bb, aa, backgroundStep, &color);
-							fColored = true;
+							
+							int bpos = bb*backgroundStep+aa*3;
+							CvScalar bcolor = cvScalar(pBackgroundData[bpos+0],
+								pBackgroundData[bpos+1],
+								pBackgroundData[bpos+2]);
+
+							//Color the pixel only if it is uncolored
+							if (ColorUtils::compareColors(bcolor, bgColor)){
+								ColorUtils::recolorPixel(pBackgroundData, 
+												bb, aa, backgroundStep, &color);
+								fColored = true;
+							}
 					}
 				}
 			}
@@ -279,6 +299,8 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList,
 
 			cvReleaseImage(&tempImg);
 		}
+
+		printf("done!\n");
 	}
 
 	return backgroundImage;
@@ -383,6 +405,7 @@ bool Synthesizer::checkSurrounding(int x, int y,
 		}
 	}
 	else {
+		printf("2");
 		int maxWidth = 
 			MIN(x + t->getTextonImg()->width + nArea, synthesizedImage->width);
 		int maxHeight = 
@@ -502,7 +525,7 @@ void Synthesizer::synthesizeImage(vector<Cluster> &clusterList,
 				//update the texton appearance and sort the texton list 
 				//accordingly in order to maintain a fair share for each texton
 				texton->addAppereance();
-				curCluster.m_textonList.sort(SortTextonsPredicate);
+				curCluster.m_textonList.sort(SortTextonsByAppereanceNumber);
 			}
 		}
 

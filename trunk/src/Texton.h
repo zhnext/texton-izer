@@ -17,11 +17,11 @@ public:
 	}
 
 	inline int getWidth() {
-		return (maxX - minX);
+		return ((maxX - minX == 0) ? 1 : (maxX - minX));
 	}
 
 	inline int getHeight() {
-		return (maxY - minY);
+		return ((maxY - minY == 0) ? 1 : (maxY - minY));
 	}
 
 	int getPositionMask(IplImage *pImg);
@@ -73,6 +73,7 @@ public:
 	void			setDilationArea(int nDilation);
 
 	void			addAppereance();
+	int				getAppereances()			{ return m_nAppereances; }
 
 	bool			operator<(const Texton& right) const;
 

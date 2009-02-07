@@ -11,10 +11,10 @@ class Cluster
 public:
 	Cluster():m_fBackground(false),m_fImageBackground(false) {}
 
-	void setBackground()		{ m_fBackground = true; }
+	//void setBackground()		{ m_fBackground = true; }
 	void setImageBackground()		{ m_fImageBackground = true; }
 
-	bool isBackground() const	{ return m_fBackground; }
+	//bool isBackground() const	{ return m_fBackground; }
 	bool isImageBackground() const	{ return m_fImageBackground; }
 
 public:

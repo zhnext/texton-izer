@@ -11,7 +11,7 @@ using std::vector;
 using std::list;
 
 #define AVG_DILATION_ERROR		2
-#define MAXIMUM_TEXTON_OVERLAP	8
+#define MAXIMUM_TEXTON_OVERLAP	10
 
 #define RESULT_BG_COLOR			cvScalarAll(5)
 #define RESULT_DILATION_COLOR	cvScalarAll(50)
@@ -37,7 +37,7 @@ public:
 	IplImage* synthesize(int nNewWidth, int nNewHeight, int depth, 
 						int nChannels, vector<Cluster> &clusterList);
 
-private:
+protected:
 	/**
 	 * Insert the texton into the synthesized image at a specific spot
 	 * @param x the x value of the insertion destination
@@ -119,7 +119,9 @@ private:
 private:
 	class SynthesizerException {};
 
-private:
+protected:
+
+	int m_nEmptySpots;
 
 	CvScalar m_textonBgColor;
 	CvScalar m_resultBgColor;
@@ -138,5 +140,7 @@ public:
 	int	m_x;
 	int m_y;
 };
+
+bool SortTextonsByAppereanceNumber(Texton*& lhs, Texton*& rhs);
 
 #endif	//__H_SYNTHESIZER_H__

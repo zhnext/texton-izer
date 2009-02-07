@@ -8,15 +8,24 @@ m_pImg(Img),m_nClusters(nClusters),m_nMinTextonSize(nMinTextonSize),m_background
 	m_pOutImg = cvCreateImage(cvSize(m_pImg->width,m_pImg->height),
 								m_pImg->depth,
 								m_pImg->nChannels);
+	m_pSmoothImg = cvCreateImage(cvSize(m_pImg->width,m_pImg->height),
+		m_pImg->depth,
+		m_pImg->nChannels);
 	m_pClusters = cvCreateMat( (m_pImg->height * m_pImg->width), 1, CV_32SC1 );
 	
 	m_pSegmentBoundaries = cvCreateImage(cvGetSize(m_pOutImg), IPL_DEPTH_8U, 1);
   
 	m_bgColor = TEXTON_BG_COLOR;
 
-	printf("Paramters: \n\tMinimal Texton Size=%d, Clusters Number=%d\n", 
+	printf("Textonator Parameters: \n\tMinimal Texton Size=%d, Clusters Number=%d\n", 
 										m_nMinTextonSize, 
 										m_nClusters);
+	if(backgroundPixel.val[0] != UNDEFINED && backgroundPixel.val[1] != UNDEFINED) {
+		printf("\tbackground pixel = (%d,%d)\n",
+			backgroundPixel.val[0], backgroundPixel.val[1]);
+	}
+
+	m_pUnifiedTextonMap = new int[m_pOutImg->height * m_pOutImg->width];
 }
 
 Textonator::~Textonator()
@@ -28,19 +37,32 @@ Textonator::~Textonator()
 
 void Textonator::blurImage()
 {
-	IplImage* pPyrImg = cvCreateImage(cvSize(m_pImg->width*2,m_pImg->height*2),
-										m_pImg->depth,
-										m_pImg->nChannels);
-
 	//gaussian blur (5x5) the image, to smooth out the texture while preserving edge information
-	cvSmooth(m_pOutImg, m_pOutImg);
+	cvSmooth(m_pImg, m_pSmoothImg, CV_BLUR);
+}
 
-	cvReleaseImage(&pPyrImg);
+void Textonator::unifyTextonMaps(vector<int*> & pTextonMapList)
+{
+	for (int x = 0; x < m_pOutImg->width; x++)
+		for (int y = 0; y < m_pOutImg->height; y++)
+			m_pUnifiedTextonMap[y * m_pOutImg->width + x] = UNCLUSTERED_PIXEL;
+
+	for (unsigned int i = 0; i < pTextonMapList.size(); i++) {
+		for (int x = 0; x < m_pOutImg->width; x++) {
+			for (int y = 0; y < m_pOutImg->height; y++) {
+				if (pTextonMapList[i][y * m_pOutImg->width + x] >= FIRST_TEXTON_NUM)
+					m_pUnifiedTextonMap[y * m_pOutImg->width + x] = i;
+			}
+		}
+	}
 }
 
 void Textonator::textonize(vector<Cluster>& clusterList)
 {
 	vector<int*> pTextonMapList;
+
+	//blur the edge, to remove insignificant edges
+	blurImage();
 
 	//we'll start by segmenting and clustering the image
 	segment();
@@ -52,9 +74,6 @@ void Textonator::textonize(vector<Cluster>& clusterList)
 		//color the cluster we are currently working on
 		colorCluster(i);
 
-		//blur the edge, to remove insignificant edges
-		blurImage();
-
 		//retrieve the canny edges of the cluster
 		cannyEdgeDetect();
 
@@ -65,7 +84,7 @@ void Textonator::textonize(vector<Cluster>& clusterList)
 		pTextonMapList.push_back(pTextonMap);
 	}
 
-	computeCoOccurences(pTextonMapList, clusterList);
+	unifyTextonMaps(pTextonMapList);
 
 	printf("\n>>> Texton Extraction phase completed successfully! <<<\n\n");
 }
@@ -74,7 +93,7 @@ void Textonator::segment()
 {
   printf("\n<<< Feature Extraction >>>\n");
 
-  CFeatureExtraction *pFeatureExtractor = new CFeatureExtraction(m_pImg);
+  CFeatureExtraction *pFeatureExtractor = new CFeatureExtraction(m_pSmoothImg);
   pFeatureExtractor->run();
 
   cluster(pFeatureExtractor);
@@ -211,7 +230,7 @@ int Textonator::scanForTextons(int nCluster, bool &fBackgroundCluster, int * pTe
 	if (m_backgroundPixel.val[0] != UNDEFINED && 
 		m_backgroundPixel.val[1] != UNDEFINED){
 		int pos = (int)m_backgroundPixel.val[1]*m_pOutImg->width+(int)m_backgroundPixel.val[0];
-		if (pTextonMap[pos] == UNCLUSTERED_DATA)
+		if (pTextonMap[pos] == UNCLUSTERED_DATA || pTextonMap[pos] == BORDER_DATA)
 			fBackgroundCluster = true;
 	}
 
@@ -228,8 +247,8 @@ int Textonator::scanForTextons(int nCluster, bool &fBackgroundCluster, int * pTe
 
 				assignTextons(i,j, pData, pTextonMap, nTexton);
 				
-				if (fBackgroundCluster)
-					continue;
+				//if (fBackgroundCluster)
+				//	continue;
 
 				// Check if our texton is large enough
 				if (m_nCurTextonSize > m_nMinTextonSize){
@@ -252,10 +271,10 @@ int Textonator::scanForTextons(int nCluster, bool &fBackgroundCluster, int * pTe
 		} 
 	}
 
-	if (fBackgroundCluster)
-		return 1;
-	else
-		return (nTexton - FIRST_TEXTON_NUM);
+	//if (fBackgroundCluster)
+	//	return 1;
+	//else
+	return (nTexton - FIRST_TEXTON_NUM);
 }
 
 void Textonator::retrieveTextons(int nClusterSize, 
@@ -265,14 +284,18 @@ void Textonator::retrieveTextons(int nClusterSize,
 								 vector<Cluster>& clusterList)
 {
 	uchar * pData  = (uchar *) m_pOutImg->imageData;
-
+	bool firstBackgroundTexton = fBackgroundCluster;
 	int nCurTexton = FIRST_TEXTON_NUM;
 	list<Texton*> curTextonList;
 
 	//create the new cluster
 	Cluster cluster;
 
-	for (int nNum = 0; nNum < nClusterSize; nCurTexton++, nNum++){
+	//add a full background texton to the background cluster
+	if (fBackgroundCluster)
+		nClusterSize++;
+
+	for (int nNum = 0; nNum < nClusterSize; nNum++){
 
 		//"Replenish" the original image
 		memcpy(pData, (uchar *)m_pImg->imageData, m_pImg->imageSize);
@@ -286,7 +309,13 @@ void Textonator::retrieveTextons(int nClusterSize,
 		//figure out the texton dimensions
 		for (int i = 0; i < m_pOutImg->width; i++){
 			for (int j = 0; j < m_pOutImg->height; j++) {
-				if (pTextonMap[j * m_pOutImg->width + i] == nCurTexton)
+				bool fCheck;
+				if (firstBackgroundTexton)
+					fCheck = pTextonMap[j * m_pOutImg->width + i] >= FIRST_TEXTON_NUM;
+				else
+					fCheck = pTextonMap[j * m_pOutImg->width + i] == nCurTexton;
+
+				if (fCheck)
 				{
 					if (minX > i) minX = i;
 					if (minY > j) minY = j;
@@ -301,15 +330,17 @@ void Textonator::retrieveTextons(int nClusterSize,
 			}
 		}
 
+		if (firstBackgroundTexton)
+			firstBackgroundTexton = false;
+		else
+			nCurTexton++;
+
 		
 		// Create bounding box with the size of the texton
 		SBox boundingBox(minX, minY, maxX, maxY);
 
 		int xSize = boundingBox.getWidth();
 		int ySize = boundingBox.getHeight();
-
-		xSize = (xSize == 0) ? 1 : xSize;
-		ySize = (ySize == 0) ? 1 : ySize;
 
 		// Create an image with the size of the texton
 		// Copy the texton to the new image
@@ -326,7 +357,7 @@ void Textonator::retrieveTextons(int nClusterSize,
 
 		// if the cluster is known as background or is as big as the picture, 
 		//it is considered background
-		if (fBackgroundCluster || 
+		if (firstBackgroundTexton || 
 			xSize >= m_pImg->width - 10 || 
 			ySize >= m_pImg->height - 10){
 			cluster.setImageBackground();
