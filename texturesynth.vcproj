@@ -236,6 +236,14 @@
 			>
 		</File>
 		<File
+			RelativePath=".\src\RealitySynthesizer.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\src\RealitySynthesizer.h"
+			>
+		</File>
+		<File
 			RelativePath=".\src\Synthesizer.cpp"
 			>
 		</File>

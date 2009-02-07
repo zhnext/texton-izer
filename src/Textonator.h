@@ -46,6 +46,8 @@ public:
 
 	void	textonize(vector<Cluster>& clusterList);
 
+	int *	getTextonMap()	{ return m_pUnifiedTextonMap; }
+
 private:
 	
 	void	segment();
@@ -143,13 +145,18 @@ private:
 	 **/
 	void getNeighbors(int *map, int i, int j, int width, int height, int arrNeighbors[]);
 
+	void Textonator::unifyTextonMaps(vector<int*> & pTextonMapList);
+
 private:
 
 	IplImage*	m_pImg;
 	IplImage*	m_pOutImg;
+	IplImage*	m_pSmoothImg;
 	IplImage*	m_pSegmentBoundaries;
 
 	CvMat *		m_pClusters;
+
+	int *		m_pUnifiedTextonMap;
 
 	int			m_nClusters;
 	int			m_nMinTextonSize;
