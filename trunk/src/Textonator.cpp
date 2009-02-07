@@ -21,8 +21,8 @@ m_pImg(Img),m_nClusters(nClusters),m_nMinTextonSize(nMinTextonSize),m_background
 										m_nMinTextonSize, 
 										m_nClusters);
 	if(backgroundPixel.val[0] != UNDEFINED && backgroundPixel.val[1] != UNDEFINED) {
-		printf("\tbackground pixel = (%d,%d)\n",
-			backgroundPixel.val[0], backgroundPixel.val[1]);
+		printf("\tbackground pixel = (%lf,%lf)\n",
+			m_backgroundPixel.val[0], m_backgroundPixel.val[1]);
 	}
 
 	m_pUnifiedTextonMap = new int[m_pOutImg->height * m_pOutImg->width];
