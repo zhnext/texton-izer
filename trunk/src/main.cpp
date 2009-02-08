@@ -172,7 +172,7 @@ int main(int argc, char ** argv)
 	cvNamedWindow( filename, 1 );
 	cvShowImage( filename, result );
 	cvSaveImage(filename,result);
-	cvWaitKey(0);
+	//cvWaitKey(0);
 	cvDestroyWindow(filename);
 
 
