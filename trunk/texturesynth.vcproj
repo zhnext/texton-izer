@@ -140,6 +140,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="cv.lib cvaux.lib cxcore.lib highgui.lib ml.lib glut32.lib"
+				OutputFile="$(OutDir)\real$(ProjectName).exe"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;C:\Program Files\OpenCV\lib&quot;"
 				GenerateDebugInformation="true"

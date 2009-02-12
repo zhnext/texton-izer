@@ -205,7 +205,7 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList,
 		}
 
 		IplImage * bgTexton = t->getTextonImg();
-		int radius = rand() % MIN(5,MIN(t->getTextonImg()->width/2, t->getTextonImg()->height/2));
+		int radius = MAX(5,rand() % MIN(t->getTextonImg()->width/4, t->getTextonImg()->height/4));
 		printf("radius=%d\n", radius);
 
 		int textonStep = bgTexton->widthStep;
@@ -218,6 +218,7 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList,
 		int a = 0;
 		int b = 0;
 		bool fColored = false;
+		int nTries = 0;
 
 		printf("* Creating background...");
 
@@ -229,8 +230,17 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList,
 			
 			//If the pixel is already colored, 
 			//we don't activate the algorithm on it
-			if (!ColorUtils::compareColors(color, bgColor)){
+			if (nTries > 100
+				|| !ColorUtils::compareColors(color, bgColor)){
 				a++;
+				if (nTries > 100){
+					nTries = 0;
+					
+					if (radius <MIN(t->getTextonImg()->width/4, t->getTextonImg()->height/4) - 1)
+						radius++;
+
+					printf("radius=%d\t", radius);
+				}
 				if (a >= backgroundImage->width){
 					a = 0;
 					b++;
@@ -252,6 +262,7 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList,
 			int y = rand() % (tempImg->height - 2*radius) + radius;
 			CvScalar circleColor = cvScalarAll(1);
 
+			printf("+", x,y);
 			cvCircle(tempImg, cvPoint(x,y), radius, circleColor, -1);
 
 			//Extract all the circled area of the texton to the background
@@ -294,10 +305,7 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList,
 				}
 			}
 
-			//We have not colored anything, probably due to small texton
-			if (!fColored)
-				radius--;
-
+			nTries++;
 			cvReleaseImage(&tempImg);
 		}
 
