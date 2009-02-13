@@ -239,7 +239,7 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList,
 					if (radius <MIN(t->getTextonImg()->width/4, t->getTextonImg()->height/4) - 1)
 						radius++;
 
-					printf("radius=%d\t", radius);
+					//printf("radius=%d\t", radius);
 				}
 				if (a >= backgroundImage->width){
 					a = 0;
@@ -262,7 +262,7 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList,
 			int y = rand() % (tempImg->height - 2*radius) + radius;
 			CvScalar circleColor = cvScalarAll(1);
 
-			printf("+", x,y);
+			//printf("+", x,y);
 			cvCircle(tempImg, cvPoint(x,y), radius, circleColor, -1);
 
 			//Extract all the circled area of the texton to the background
