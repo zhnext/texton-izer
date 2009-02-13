@@ -206,7 +206,7 @@ IplImage * Synthesizer::retrieveBackground(vector<Cluster> &clusterList,
 
 		IplImage * bgTexton = t->getTextonImg();
 		int radius = MAX(5,rand() % MIN(t->getTextonImg()->width/4, t->getTextonImg()->height/4));
-		printf("radius=%d\n", radius);
+		//printf("radius=%d\n", radius);
 
 		int textonStep = bgTexton->widthStep;
 		int backgroundStep = backgroundImage->widthStep;
